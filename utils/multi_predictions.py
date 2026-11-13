@@ -2,6 +2,7 @@
 import base64
 import binascii
 import io
+import json
 from functools import lru_cache
 from pathlib import Path
 
@@ -11,14 +12,39 @@ import pandas as pd
 from .model_utils import load_metadata, load_model, predict, validate_input
 
 ROOT = Path(__file__).resolve().parents[1]
-# Tambahkan pasangan model/metadata di sini untuk menyediakan model berikutnya.
-MODEL_REGISTRY = {
-    "gradient-boosting-v1": {
-        "label": "Gradient Boosting v1.0.0",
-        "model": ROOT / "models" / "churn_model.joblib",
-        "metadata": ROOT / "models" / "model_metadata.json",
-    },
-}
+MODELS_DIR = ROOT / "models"
+REGISTRY_FILE = MODELS_DIR / "top_models_registry.json"
+# Ketiga model memakai fitur, kategori, threshold, dan risk bins yang sama → satu file metadata.
+METADATA_FILE = MODELS_DIR / "model_metadata.json"
+# Dipakai jika top_models_registry.json tidak ada/rusak: hanya model final asli.
+FALLBACK_MODELS = [{"rank": 1, "key": "gradient_boosting", "name": "Gradient Boosting",
+                    "file": "churn_model.joblib"}]
+
+
+def _build_registry():
+    """Daftar model untuk dropdown, diurutkan sesuai rank di models/top_models_registry.json.
+
+    Menambah model: taruh file .joblib di models/ lalu tambahkan satu entri di file JSON tersebut.
+    """
+    try:
+        models = json.loads(REGISTRY_FILE.read_text(encoding="utf-8"))["models"]
+    except (OSError, ValueError, KeyError):
+        models = FALLBACK_MODELS
+    registry = {}
+    for m in sorted(models, key=lambda m: m.get("rank", 99)):
+        auc = (m.get("cv_roc_auc") or {}).get("mean")
+        registry[m["key"]] = {
+            "label": f"#{m['rank']} {m['name']}" + (f" · CV ROC-AUC {auc:.3f}" if auc else ""),
+            "name": m["name"],
+            "description": m.get("description", ""),
+            "holdout_metrics": m.get("holdout_metrics"),
+            "model": MODELS_DIR / m["file"],
+            "metadata": METADATA_FILE,
+        }
+    return registry
+
+
+MODEL_REGISTRY = _build_registry()
 
 
 @lru_cache(maxsize=8)
@@ -28,7 +54,10 @@ def get_model_bundle(model_id):
     config = MODEL_REGISTRY[model_id]
     if not config["model"].is_file() or not config["metadata"].is_file():
         raise ValueError("File model atau metadata belum tersedia di folder models.")
-    return load_model(config["model"]), load_metadata(config["metadata"])
+    meta = load_metadata(config["metadata"])
+    if config.get("holdout_metrics"):  # metadata dipakai bersama; metrik harus milik model ini
+        meta = {**meta, "model_name": config["name"], "holdout_metrics": config["holdout_metrics"]}
+    return load_model(config["model"]), meta
 
 
 def predict_upload(contents, filename, model_id):

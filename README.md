@@ -42,7 +42,7 @@ members. If one person appears twice (different name or email on different machi
 ### Using Prediksi Multi Observasi
 
 1. Open the sidebar and select **Prediksi Multi Observasi**.
-2. Choose **Gradient Boosting v1.0.0** and upload a comma-separated UTF-8 CSV.
+2. Choose a model (see [Models](#note-on-model-selection)) and upload a comma-separated UTF-8 CSV.
    Use `data/new_customers.csv` as an example; it is not loaded automatically.
 3. Required features: `tenure_months`, `monthly_charges`, `total_charges`,
    `num_complaints`, `support_calls`, `region`, `segment`, `contract_type`,
@@ -55,8 +55,8 @@ members. If one person appears twice (different name or email on different machi
 
 Only CSV is supported in this implementation; Excel is optional in the assignment.
 All page results remain empty until upload. Changing models reruns prediction on the same file.
-To add another model, add its label, model path and metadata path to `MODEL_REGISTRY`
-in `utils/multi_predictions.py`; the dropdown layout needs no changes.
+To add another model, see [Note on model selection](#note-on-model-selection); the dropdown layout
+needs no changes.
 
 Run validation and callback tests from the project root:
 
@@ -123,14 +123,28 @@ Callbacks: `update_eda_overview`, `update_eda_categorical`, `update_eda_numeric`
 
 ### Note on model selection
 
-There is currently **only one model** (Gradient Boosting v1.0.0: `models/churn_model.joblib` +
-`models/model_metadata.json`). The model dropdown on both prediction pages must still be built so that
-more models (e.g. Logistic Regression, Random Forest) can be added later without changing the layout.
+Both prediction pages offer the **top 3 models by cross-validated ROC-AUC** (5-fold stratified), listed
+in [`models/top_models_registry.json`](models/top_models_registry.json). The dropdown is ordered by rank
+and the #1 model is selected by default.
 
-Models are listed in `MODEL_REGISTRY` in `utils/multi_predictions.py`, shared by both prediction pages.
-To add a model, add one entry (label + `.joblib` path + metadata `.json` path); both dropdowns pick it up
-automatically. A model whose files are missing still appears in the dropdown, but greyed out and not
-selectable.
+| Rank | Model | File | CV ROC-AUC | Holdout ROC-AUC | Holdout recall |
+|---|---|---|---|---|---|
+| 1 | Logistic Regression | `churn_model_logreg.joblib` | 0.800 ± 0.013 | 0.796 | 0.524 |
+| 2 | Logistic Regression + Oversampling | `churn_model_logreg_ros.joblib` | 0.799 ± 0.013 | 0.794 | 0.719 |
+| 3 | Gradient Boosting (original final model) | `churn_model.joblib` | 0.792 ± 0.012 | 0.789 | 0.552 |
+
+The three are very close on ROC-AUC. The oversampling model catches the most churners (highest recall)
+at the cost of more false alarms, so it predicts higher churn probabilities overall.
+
+All three use the same input contract, `models/model_metadata.json` (features, categories, threshold
+0.5, risk bins). The oversampling model needs `imbalanced-learn` (in `requirements.txt`).
+
+To add a model: put its `.joblib` file in `models/` and add one entry to `top_models_registry.json`
+(`rank`, `key`, `name`, `file`, metrics). Both dropdowns pick it up automatically
+(`MODEL_REGISTRY` in `utils/multi_predictions.py` is built from that file). A model whose file is
+missing still appears in the dropdown, but greyed out and not selectable.
+
+`.joblib` files are pickles: loading one can run code, so only add model files from a trusted source.
 
 ## Where to add page content
 
