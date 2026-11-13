@@ -1,7 +1,7 @@
 # sesi8/app_final_dashboard.py — FINAL DASHBOARD PROJECT (Dash + Plotly + callback + ML inference)
 #
-# STATUS: kerangka navigasi (sidebar pop-up) saja. Isi tiap halaman BELUM dibuat —
-# lihat README.md bagian "Pembagian tugas" untuk requirement tiap halaman.
+# STATUS: Data Overview dan Prediksi Multi Observasi sudah tersedia.
+# EDA dan Prediksi Single Observasi masih placeholder; lihat README.md.
 #
 # Navigasi: tombol ☰ di kiri atas membuka sidebar pop-up berisi 4 halaman:
 #   1. Data Overview
@@ -14,13 +14,18 @@
 #
 # Jalankan dari root project:  python sesi8/app_final_dashboard.py  →  http://127.0.0.1:8053
 from pathlib import Path
+import sys
+import logging
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from dash import Dash, html, dcc, dash_table, Input, Output, callback, ctx, no_update
+from dash import Dash, html, dcc, dash_table, Input, Output, State, callback, ctx, no_update
+from dash.exceptions import PreventUpdate
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from utils.multi_predictions import MODEL_REGISTRY, predict_upload
 
 # ============ 0. DATA HISTORIS (dimuat sekali saat aplikasi start) ============
 RAW = pd.read_csv(ROOT / "data" / "customer_churn.csv", parse_dates=["signup_date"])  # apa adanya
@@ -80,7 +85,7 @@ PAGES = [("overview", "📊  Data Overview"),
 PAGE_TITLE = {k: t.split("  ", 1)[1] for k, t in PAGES}
 
 
-# ============ 3. ISI HALAMAN (placeholder — dikerjakan oleh anggota tim) ============
+# ============ 3. ISI HALAMAN ============
 def placeholder(key, deskripsi):
     return html.Div([
         html.H3(PAGE_TITLE[key], style={"margin": "4px 0 12px"}),
@@ -183,11 +188,29 @@ def page_single():
 
 
 def page_multi():
-    # TODO: upload file CSV/Excel → prediksi seluruh baris; grafik & tabel HANYA dari file — lihat README.
-    # CATATAN MODEL: sama seperti Prediksi Single — sediakan dropdown "Pilih model".
-    # Saat ini baru ada SATU model (Gradient Boosting v1.0.0).
-    return placeholder("multi", "Upload file pelanggan; hasil prediksi hanya menampilkan data dari file. "
-                                "Bisa memilih model (saat ini baru 1 model tersedia).")
+    return html.Div([
+        html.H3(PAGE_TITLE["multi"]),
+        html.P("Upload CSV pelanggan. Seluruh ringkasan dan hasil pada halaman ini hanya berasal dari file Anda."),
+        card(
+            html.Label("Pilih model", htmlFor="multi-model"),
+            dcc.Dropdown(id="multi-model", clearable=False,
+                         options=[{"label": v["label"], "value": k} for k, v in MODEL_REGISTRY.items()],
+                         value=next(iter(MODEL_REGISTRY))),
+            html.P("CSV UTF-8, pemisah koma. Gunakan kolom fitur seperti pada data/new_customers.csv."),
+            dcc.Upload(id="multi-upload", multiple=False, accept=".csv",
+                       children=html.Div("Tarik file CSV ke sini atau klik untuk memilih file"),
+                       style={"border": "2px dashed #CBD5E1", "borderRadius": "8px",
+                              "padding": "28px", "textAlign": "center", "cursor": "pointer"}),
+        ),
+        dcc.Store(id="multi-results", storage_type="memory"),
+        dcc.Loading(html.Div([
+            html.Div(id="multi-message", role="status", style={"margin": "12px 0"}),
+            html.Div(id="multi-output"),
+        ])),
+        html.Button("Unduh hasil CSV", id="multi-download-button", n_clicks=0,
+                    disabled=True, style={**BTN, "fontSize": "14px", "marginTop": "12px"}),
+        dcc.Download(id="multi-download"),
+    ])
 
 
 PAGE_BUILDERS = {"overview": page_overview, "eda": page_eda, "single": page_single, "multi": page_multi}
@@ -257,6 +280,60 @@ def show_page(page):
 
 # ============ 6. CALLBACKS: ISI HALAMAN ============
 # TODO: callback tiap halaman ditambahkan di sini oleh anggota tim yang mengerjakannya.
+
+
+@callback(Output("multi-message", "children"), Output("multi-output", "children"),
+          Output("multi-results", "data"), Output("multi-download-button", "disabled"),
+          Input("multi-upload", "contents"), Input("multi-model", "value"),
+          State("multi-upload", "filename"))
+def update_multi(contents, model_id, filename):
+    if not contents:
+        return "Silakan upload CSV untuk memulai prediksi.", [], None, True
+    try:
+        result, errors = predict_upload(contents, filename, model_id)
+    except Exception:
+        logging.exception("Prediksi multi observasi gagal")
+        return "Prediksi gagal. Periksa ketersediaan model dan kecocokan versi dependensi di server.", [], None, True
+    if errors:
+        message = html.Div([html.Strong("File belum valid:"),
+                            html.Ul([html.Li(e) for e in errors])], style={"color": "#B91C1C"})
+        return message, [], None, True
+    risk_colors = {"Rendah": "#1baf7a", "Sedang": "#eda100", "Tinggi": "#e34948"}
+    counts = result["risk_category"].value_counts().rename_axis("risk_category").reset_index(name="pelanggan")
+    donut = px.pie(counts, names="risk_category", values="pelanggan", color="risk_category",
+                   hole=0.5, color_discrete_map=risk_colors, title="Komposisi risiko pelanggan upload")
+    donut.update_traces(textinfo="percent+label")
+    region_risk = pd.crosstab(result["region"], result["risk_category"]).reindex(
+        columns=["Rendah", "Sedang", "Tinggi"], fill_value=0).reset_index()
+    bar = px.bar(region_risk.melt(id_vars="region", var_name="risk_category", value_name="pelanggan"),
+                 x="region", y="pelanggan", color="risk_category", color_discrete_map=risk_colors,
+                 title="Jumlah pelanggan upload per region dan risiko", template="plotly_white")
+    # JSON round-trip mengubah NaN pada kolom tambahan menjadi null yang valid untuk Dash.
+    import json
+    records = json.loads(result.to_json(orient="records", date_format="iso"))
+    columns = [{"name": c, "id": c} for c in result.columns]
+    output = [
+        html.Div(style=ROW, children=[
+            kpi("Pelanggan diproses", f"{len(result):,}"),
+            kpi("Prediksi churn", f"{int(result.predicted_churn.sum()):,}"),
+            kpi("Rata-rata probabilitas", f"{result.churn_probability.mean():.1%}"),
+            kpi("Risiko tinggi", f"{int((result.risk_category == 'Tinggi').sum()):,}"),
+        ]),
+        html.Div(style=GRID2, children=[card(dcc.Graph(figure=donut)), card(dcc.Graph(figure=bar))]),
+        card(html.H4("Hasil prediksi seluruh pelanggan upload"),
+             dash_table.DataTable(id="multi-table", data=records, columns=columns,
+                                  page_size=10, sort_action="native", filter_action="native",
+                                  **TABLE_STYLE), marginTop="12px"),
+    ]
+    return f"{filename}: {len(result):,} pelanggan berhasil diprediksi dengan {MODEL_REGISTRY[model_id]['label']}.", output, records, False
+
+
+@callback(Output("multi-download", "data"), Input("multi-download-button", "n_clicks"),
+          State("multi-results", "data"), prevent_initial_call=True)
+def download_multi(n_clicks, records):
+    if not n_clicks or not records:
+        raise PreventUpdate
+    return dcc.send_data_frame(pd.DataFrame(records).to_csv, "hasil_prediksi_multi.csv", index=False)
 
 
 if __name__ == "__main__":

@@ -7,15 +7,16 @@ Final project dashboard (Dash + Plotly + ML inference) for predicting which cust
 From the project root:
 
 ```bash
-pip install dash pandas plotly scikit-learn joblib
+python -m pip install -r requirements.txt
 python sesi8/app_final_dashboard.py
 ```
 
 Open http://127.0.0.1:8053.
 
 `data/customer_churn.csv` (historical dataset) is in the repo and is loaded when the app starts.
-The prediction pages will also need `data/new_customers.csv`, `models/churn_model.joblib` and
-`models/model_metadata.json`, which are **not in the repo yet**.
+`data/new_customers.csv`, `models/churn_model.joblib` and `models/model_metadata.json`
+are included for batch prediction. The model metadata records scikit-learn 1.9.1;
+use the version pinned in `requirements.txt` when loading this model.
 
 ## Current status
 
@@ -24,9 +25,35 @@ The prediction pages will also need `data/new_customers.csv`, `models/churn_mode
 - [x] Data Overview page content
 - [ ] EDA page content
 - [ ] Single-observation prediction page content
-- [ ] Multi-observation prediction page content
+- [x] Multi-observation prediction page content (CSV upload, validation, model selection, KPIs,
+  charts, results table and CSV download)
 
 Pages that aren't built yet show a "🚧 Halaman belum dibuat" placeholder.
+
+### Using Prediksi Multi Observasi
+
+1. Open the sidebar and select **Prediksi Multi Observasi**.
+2. Choose **Gradient Boosting v1.0.0** and upload a comma-separated UTF-8 CSV.
+   Use `data/new_customers.csv` as an example; it is not loaded automatically.
+3. Required features: `tenure_months`, `monthly_charges`, `total_charges`,
+   `num_complaints`, `support_calls`, `region`, `segment`, `contract_type`,
+   `payment_method`, `internet_service`. `customer_id` and other extra columns are optional
+   and preserved in the results.
+4. Fix any missing columns, unknown categories, empty feature values, or invalid numbers
+   reported by validation, then upload again. An invalid upload clears the previous results.
+5. Review the uploaded customers' KPIs, risk composition, region chart and results table.
+   **Unduh hasil CSV** exports all predicted rows, including probability, class and risk category.
+
+Only CSV is supported in this implementation; Excel is optional in the assignment.
+All page results remain empty until upload. Changing models reruns prediction on the same file.
+To add another model, add its label, model path and metadata path to `MODEL_REGISTRY`
+in `utils/multi_predictions.py`; the dropdown layout needs no changes.
+
+Run validation and callback tests from the project root:
+
+```bash
+python -m unittest discover -s tests -v
+```
 
 ## Requirements
 
