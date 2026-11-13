@@ -22,7 +22,7 @@ The prediction pages will also need `data/new_customers.csv`, `models/churn_mode
 - [x] **Sidebar navigation**: the ☰ button (top left) opens a pop-up sidebar for switching between the
   four pages. Clicking a menu item, ✕, or anywhere outside the sidebar closes it.
 - [x] Data Overview page content
-- [ ] EDA page content
+- [x] EDA page content
 - [ ] Single-observation prediction page content
 - [ ] Multi-observation prediction page content
 
@@ -46,15 +46,29 @@ Profile of the historical dataset (`data/customer_churn.csv`):
 - Descriptive statistics for numeric features
 - Raw data preview table
 
-### 2. EDA
+### 2. EDA *(done)*
 
-Exploration of churn patterns in the historical data, for example:
+Exploration of churn patterns in the historical data. Every KPI, chart and insight on the page
+follows the filters.
 
-- Filters (region, segment, contract type, tenure)
-- Churn rate by categorical feature
-- Distribution of numeric features by churn status
-- Churn trend over time, correlation between features and churn
-- Short written insights based on the charts
+- Filters in one row: region, segment, contract type (empty = all), tenure range, and a
+  **Reset filter** button
+- KPIs: customers, churn rate (compared with the full dataset), churned customers, median tenure and
+  average complaints for churned vs. retained customers
+- Churn rate by categorical feature (a dropdown picks the feature), with the average as a reference
+  line, plus a churn-rate heatmap of segment × contract type
+- Numeric features (a dropdown picks the feature): distribution by churn status (% within each
+  status, with box plots), and churn rate per value band. Band edges are fixed from the full
+  dataset (tenure 1–6/7–12/13–24/25–48/49–72 months, charge quintiles, complaint and call counts),
+  so the bands stay the same when filters change.
+- Churn rate trend by signup quarter
+- Correlation of each numeric feature with churn, and a full correlation matrix
+- **Insight utama**: written insights recalculated from the filtered data (contract type, tenure,
+  complaints, highest-churn group, strongest correlation). Groups with fewer than 30 customers are
+  skipped.
+
+Callbacks: `update_eda_overview`, `update_eda_categorical`, `update_eda_numeric` and
+`reset_eda_filters` (section 6b). Component ids use the `eda-` prefix.
 
 ### 3. Prediksi Single Observasi
 
