@@ -1,0 +1,135 @@
+customer_id,region,segment,contract_type,payment_method,tenure_months,monthly_charges,num_complaints,churn_probability,risk_category
+CUST-00408,Sulawesi,Retail,Bulanan,Transfer Bank,28,407000.0,5,0.8937,Tinggi
+CUST-01264,Bali-Nusa Tenggara,UMKM,Bulanan,Transfer Bank,19,544000.0,2,0.8526,Tinggi
+CUST-01516,Jawa,Retail,Bulanan,Transfer Bank,3,279000.0,0,0.843,Tinggi
+CUST-02956,Jawa,UMKM,Bulanan,E-Wallet,17,575000.0,2,0.8216,Tinggi
+CUST-00263,Jawa,Retail,Bulanan,E-Wallet,25,430000.0,3,0.8193,Tinggi
+CUST-02987,Jawa,Retail,Bulanan,Transfer Bank,27,308000.0,3,0.8039,Tinggi
+CUST-02759,Kalimantan,Retail,Bulanan,Transfer Bank,1,522000.0,1,0.8034,Tinggi
+CUST-02147,Jawa,Korporat,Bulanan,Transfer Bank,7,553000.0,0,0.7959,Tinggi
+CUST-01192,Jawa,UMKM,Bulanan,Transfer Bank,2,403000.0,0,0.7957,Tinggi
+CUST-00262,Sulawesi,UMKM,Bulanan,Transfer Bank,28,611000.0,2,0.7938,Tinggi
+CUST-02635,Sumatera,Retail,Bulanan,Kartu Kredit,22,438000.0,2,0.7722,Tinggi
+CUST-01779,Jawa,Retail,Bulanan,E-Wallet,31,454000.0,3,0.7715,Tinggi
+CUST-02947,Jawa,Retail,Bulanan,Transfer Bank,7,453000.0,4,0.7691,Tinggi
+CUST-00040,Kalimantan,UMKM,Bulanan,Transfer Bank,13,308000.0,1,0.7592,Tinggi
+CUST-00368,Kalimantan,UMKM,Bulanan,Virtual Account,22,537000.0,3,0.7553,Tinggi
+CUST-02025,Sumatera,UMKM,Bulanan,Transfer Bank,22,347000.0,2,0.7481,Tinggi
+CUST-01986,Bali-Nusa Tenggara,Retail,Bulanan,Transfer Bank,4,319000.0,0,0.7473,Tinggi
+CUST-00109,Jawa,Retail,Bulanan,Virtual Account,3,452000.0,2,0.7447,Tinggi
+CUST-01771,Sumatera,UMKM,Bulanan,Transfer Bank,12,379000.0,2,0.7437,Tinggi
+CUST-01931,Kalimantan,UMKM,Bulanan,Transfer Bank,10,462000.0,1,0.7429,Tinggi
+CUST-02607,Sumatera,Retail,Bulanan,E-Wallet,3,551000.0,1,0.7427,Tinggi
+CUST-01435,Jawa,Retail,Bulanan,Transfer Bank,4,330000.0,2,0.7419,Tinggi
+CUST-02533,Kalimantan,Retail,Bulanan,Transfer Bank,14,281000.0,0,0.7418,Tinggi
+CUST-02564,Sumatera,Retail,Bulanan,Transfer Bank,29,356000.0,2,0.7353,Tinggi
+CUST-02519,Sumatera,Retail,Tahunan,Transfer Bank,8,482000.0,2,0.7304,Tinggi
+CUST-00648,Sumatera,Retail,Bulanan,Kartu Kredit,3,456000.0,4,0.7267,Tinggi
+CUST-00274,Sumatera,UMKM,Bulanan,E-Wallet,2,642000.0,2,0.7221,Tinggi
+CUST-00361,Bali-Nusa Tenggara,Retail,Bulanan,Transfer Bank,11,514000.0,3,0.7217,Tinggi
+CUST-00199,Jawa,Retail,Bulanan,Transfer Bank,2,303000.0,2,0.7183,Tinggi
+CUST-00792,Jawa,Retail,Bulanan,Transfer Bank,33,285000.0,2,0.7167,Tinggi
+CUST-00478,Sumatera,Korporat,Bulanan,E-Wallet,26,572000.0,2,0.7146,Tinggi
+CUST-02304,Sumatera,Retail,Bulanan,Virtual Account,5,490000.0,3,0.7139,Tinggi
+CUST-01597,Jawa,Retail,Bulanan,Transfer Bank,4,477000.0,1,0.7136,Tinggi
+CUST-00246,Sulawesi,Retail,Bulanan,E-Wallet,6,342000.0,2,0.7118,Tinggi
+CUST-02852,Sumatera,UMKM,Bulanan,Transfer Bank,5,439000.0,0,0.7095,Tinggi
+CUST-02271,Sumatera,Korporat,Bulanan,Kartu Kredit,33,617000.0,3,0.7093,Tinggi
+CUST-00005,Jawa,Retail,Bulanan,Transfer Bank,4,340000.0,1,0.7043,Tinggi
+CUST-02296,Jawa,Retail,Bulanan,Virtual Account,7,334000.0,1,0.7022,Tinggi
+CUST-01894,Jawa,Retail,Bulanan,Kartu Kredit,1,417000.0,3,0.6998,Tinggi
+CUST-00390,Sulawesi,Retail,Bulanan,Transfer Bank,21,285000.0,2,0.698,Tinggi
+CUST-00429,Jawa,Korporat,Bulanan,E-Wallet,11,731000.0,1,0.6979,Tinggi
+CUST-00452,Sulawesi,Retail,Bulanan,Transfer Bank,12,273000.0,2,0.6969,Tinggi
+CUST-00087,Kalimantan,Retail,Bulanan,Transfer Bank,3,296000.0,2,0.6951,Tinggi
+CUST-00809,Sumatera,Korporat,Bulanan,Kartu Kredit,10,509000.0,3,0.6925,Tinggi
+CUST-00536,Jawa,UMKM,Bulanan,Kartu Kredit,4,456000.0,1,0.6914,Tinggi
+CUST-01437,Jawa,UMKM,Bulanan,Transfer Bank,2,613000.0,1,0.6903,Tinggi
+CUST-00277,Jawa,Retail,Bulanan,Virtual Account,1,315000.0,3,0.6864,Tinggi
+CUST-02160,Jawa,Retail,Bulanan,Transfer Bank,3,287000.0,2,0.6828,Tinggi
+CUST-01562,Sumatera,Retail,Bulanan,Kartu Kredit,1,469000.0,2,0.6824,Tinggi
+CUST-00524,Sumatera,Retail,Bulanan,Kartu Kredit,33,424000.0,2,0.6809,Tinggi
+CUST-02447,Jawa,UMKM,Bulanan,E-Wallet,7,505000.0,2,0.6788,Tinggi
+CUST-00836,Sumatera,Retail,Bulanan,Transfer Bank,30,512000.0,1,0.6759,Tinggi
+CUST-02807,Jawa,UMKM,Bulanan,E-Wallet,5,390000.0,1,0.6756,Tinggi
+CUST-00735,Jawa,Retail,Bulanan,Transfer Bank,25,341000.0,2,0.6753,Tinggi
+CUST-00344,Sumatera,Retail,Bulanan,Transfer Bank,24,303000.0,2,0.6738,Tinggi
+CUST-01872,Sumatera,Retail,Bulanan,Transfer Bank,1,492000.0,0,0.6713,Tinggi
+CUST-01424,Jawa,Retail,Bulanan,Transfer Bank,15,304000.0,1,0.6707,Tinggi
+CUST-01379,Sumatera,Korporat,Bulanan,E-Wallet,9,468000.0,1,0.6702,Tinggi
+CUST-00575,Sulawesi,Retail,Bulanan,Transfer Bank,6,270000.0,1,0.6701,Tinggi
+CUST-02898,Jawa,UMKM,Bulanan,Transfer Bank,5,540000.0,1,0.667,Tinggi
+CUST-01876,Sulawesi,Retail,Bulanan,E-Wallet,21,471000.0,1,0.6656,Tinggi
+CUST-01248,Jawa,Retail,Bulanan,Kartu Kredit,26,351000.0,4,0.6653,Tinggi
+CUST-00814,Sumatera,Retail,Bulanan,Transfer Bank,9,314000.0,2,0.6631,Tinggi
+CUST-00953,Jawa,Korporat,Bulanan,Virtual Account,5,753000.0,3,0.6626,Tinggi
+CUST-01790,Jawa,UMKM,Bulanan,Transfer Bank,28,389000.0,1,0.662,Tinggi
+CUST-02685,Jawa,Retail,Bulanan,Virtual Account,5,427000.0,4,0.6598,Tinggi
+CUST-01941,Jawa,UMKM,Bulanan,E-Wallet,18,390000.0,2,0.6579,Tinggi
+CUST-01939,Jawa,UMKM,Bulanan,Kartu Kredit,3,314000.0,1,0.6568,Tinggi
+CUST-01479,Sumatera,UMKM,Bulanan,Transfer Bank,2,298000.0,0,0.6552,Tinggi
+CUST-01586,Bali-Nusa Tenggara,UMKM,Bulanan,E-Wallet,33,420000.0,2,0.6552,Tinggi
+CUST-01398,Bali-Nusa Tenggara,UMKM,Bulanan,Kartu Kredit,22,574000.0,2,0.6533,Tinggi
+CUST-00665,Jawa,Retail,Bulanan,Transfer Bank,15,368000.0,2,0.6528,Tinggi
+CUST-00837,Kalimantan,UMKM,Bulanan,Transfer Bank,6,401000.0,0,0.6527,Tinggi
+CUST-02546,Jawa,Retail,Bulanan,E-Wallet,3,237000.0,0,0.6519,Tinggi
+CUST-00677,Bali-Nusa Tenggara,Retail,Bulanan,E-Wallet,3,408000.0,2,0.6514,Tinggi
+CUST-02508,Bali-Nusa Tenggara,Retail,Bulanan,Transfer Bank,3,548000.0,0,0.651,Tinggi
+CUST-02602,Kalimantan,Retail,Bulanan,Transfer Bank,7,247000.0,0,0.6509,Tinggi
+CUST-01444,Jawa,Korporat,Bulanan,E-Wallet,1,855000.0,1,0.6493,Tinggi
+CUST-01708,Jawa,Retail,Bulanan,E-Wallet,15,407000.0,1,0.6484,Tinggi
+CUST-02344,Jawa,Retail,Bulanan,Transfer Bank,3,349000.0,0,0.646,Tinggi
+CUST-00426,Sulawesi,Retail,Bulanan,E-Wallet,22,499000.0,2,0.6449,Tinggi
+CUST-01294,Jawa,Retail,Bulanan,Kartu Kredit,18,491000.0,2,0.6449,Tinggi
+CUST-02879,Sumatera,UMKM,Bulanan,Transfer Bank,21,558000.0,1,0.6445,Tinggi
+CUST-00421,Kalimantan,UMKM,Bulanan,Transfer Bank,14,619000.0,1,0.6429,Tinggi
+CUST-01392,Sulawesi,UMKM,Bulanan,Virtual Account,27,398000.0,2,0.6422,Tinggi
+CUST-01720,Sulawesi,Retail,Bulanan,E-Wallet,35,423000.0,3,0.6379,Tinggi
+CUST-02532,Sumatera,UMKM,Bulanan,Transfer Bank,10,555000.0,0,0.6375,Tinggi
+CUST-01202,Sumatera,UMKM,Bulanan,E-Wallet,10,461000.0,1,0.6366,Tinggi
+CUST-01793,Jawa,Retail,Bulanan,E-Wallet,5,417000.0,0,0.6356,Tinggi
+CUST-02027,Sulawesi,Retail,Bulanan,Transfer Bank,7,264000.0,0,0.634,Tinggi
+CUST-00322,Sumatera,Retail,Bulanan,Transfer Bank,5,430000.0,0,0.6335,Tinggi
+CUST-00142,Sumatera,Retail,Bulanan,Virtual Account,1,232000.0,1,0.6327,Tinggi
+CUST-01358,Sumatera,Retail,Bulanan,E-Wallet,27,543000.0,2,0.6317,Tinggi
+CUST-01352,Sulawesi,Retail,Bulanan,Kartu Kredit,6,371000.0,1,0.6294,Tinggi
+CUST-01590,Jawa,Korporat,Bulanan,E-Wallet,14,493000.0,2,0.6285,Tinggi
+CUST-00637,Kalimantan,UMKM,Bulanan,E-Wallet,28,399000.0,2,0.6284,Tinggi
+CUST-02323,Jawa,UMKM,Bulanan,Kartu Kredit,2,456000.0,1,0.6284,Tinggi
+CUST-00857,Kalimantan,UMKM,Bulanan,E-Wallet,2,508000.0,1,0.6283,Tinggi
+CUST-01866,Sulawesi,Retail,Bulanan,Transfer Bank,3,363000.0,0,0.628,Tinggi
+CUST-00598,Sumatera,Korporat,Bulanan,Kartu Kredit,3,838000.0,0,0.6261,Tinggi
+CUST-02216,Jawa,Retail,Bulanan,Transfer Bank,25,444000.0,1,0.6245,Tinggi
+CUST-01096,Jawa,Retail,Bulanan,E-Wallet,13,300000.0,2,0.6242,Tinggi
+CUST-02993,Jawa,Korporat,Bulanan,Virtual Account,8,877000.0,3,0.624,Tinggi
+CUST-02219,Bali-Nusa Tenggara,Retail,Bulanan,E-Wallet,26,340000.0,5,0.624,Tinggi
+CUST-01937,Sumatera,Retail,Bulanan,E-Wallet,8,315000.0,3,0.6237,Tinggi
+CUST-00973,Jawa,Retail,Bulanan,Virtual Account,11,358000.0,3,0.6229,Tinggi
+CUST-00271,Jawa,Korporat,Bulanan,Transfer Bank,9,706000.0,1,0.6224,Tinggi
+CUST-02926,Sumatera,Retail,Bulanan,Kartu Kredit,6,253000.0,0,0.6213,Tinggi
+CUST-00520,Sulawesi,UMKM,Bulanan,Transfer Bank,6,536000.0,0,0.6195,Tinggi
+CUST-01899,Jawa,Korporat,Dua Tahun,Transfer Bank,36,835000.0,3,0.6184,Tinggi
+CUST-00620,Jawa,Korporat,Bulanan,E-Wallet,11,640000.0,1,0.6178,Tinggi
+CUST-00978,Jawa,Retail,Bulanan,Virtual Account,13,289000.0,0,0.6161,Tinggi
+CUST-02360,Jawa,UMKM,Bulanan,Transfer Bank,33,584000.0,2,0.6158,Tinggi
+CUST-02875,Jawa,Retail,Bulanan,Kartu Kredit,13,426000.0,1,0.6134,Tinggi
+CUST-02032,Sumatera,UMKM,Bulanan,Transfer Bank,8,353000.0,0,0.6122,Tinggi
+CUST-02660,Jawa,UMKM,Bulanan,Virtual Account,4,438000.0,0,0.6115,Tinggi
+CUST-00282,Jawa,Retail,Bulanan,Virtual Account,20,357000.0,2,0.611,Tinggi
+CUST-01049,Sulawesi,Retail,Bulanan,Virtual Account,12,332000.0,2,0.6106,Tinggi
+CUST-00858,Sulawesi,Retail,Bulanan,E-Wallet,2,446000.0,0,0.6097,Tinggi
+CUST-00195,Jawa,UMKM,Bulanan,Kartu Kredit,32,692000.0,2,0.6081,Tinggi
+CUST-00849,Jawa,Retail,Bulanan,Kartu Kredit,17,367000.0,2,0.607,Tinggi
+CUST-02860,Sumatera,Retail,Bulanan,E-Wallet,1,395000.0,1,0.6062,Tinggi
+CUST-02718,Bali-Nusa Tenggara,Korporat,Bulanan,E-Wallet,19,662000.0,2,0.6054,Tinggi
+CUST-01730,Jawa,Retail,Bulanan,Virtual Account,23,333000.0,3,0.6053,Tinggi
+CUST-00280,Sulawesi,Retail,Bulanan,Virtual Account,15,272000.0,2,0.6049,Tinggi
+CUST-00355,Sumatera,Retail,Bulanan,E-Wallet,18,526000.0,1,0.6037,Tinggi
+CUST-00852,Jawa,Retail,Bulanan,E-Wallet,14,329000.0,3,0.6037,Tinggi
+CUST-01420,Bali-Nusa Tenggara,Retail,Bulanan,E-Wallet,1,220000.0,1,0.6027,Tinggi
+CUST-00287,Jawa,UMKM,Bulanan,Virtual Account,8,333000.0,1,0.6026,Tinggi
+CUST-02603,Sumatera,Korporat,Bulanan,Transfer Bank,15,589000.0,1,0.6023,Tinggi
+CUST-01823,Sumatera,UMKM,Bulanan,Transfer Bank,24,481000.0,2,0.6008,Tinggi
+CUST-01583,Jawa,UMKM,Bulanan,Kartu Kredit,14,328000.0,2,0.6007,Tinggi
+CUST-02294,Jawa,UMKM,Bulanan,E-Wallet,4,304000.0,1,0.6007,Tinggi
+CUST-00438,Sumatera,Retail,Bulanan,E-Wallet,1,367000.0,0,0.6001,Tinggi
