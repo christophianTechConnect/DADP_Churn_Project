@@ -13,14 +13,51 @@
 # lalu tambahkan callback-nya di bagian 6. Jangan ubah id "page-<key>" karena dipakai navigasi.
 #
 # Jalankan dari root project:  python sesi8/app_final_dashboard.py  →  http://127.0.0.1:8053
+import sys
 from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from dash import Dash, html, dcc, dash_table, Input, Output, callback, ctx, no_update
+from dash import Dash, html, dcc, dash_table, Input, Output, State, callback, ctx, no_update
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT))
+from utils.model_utils import load_model, load_metadata, validate_input, predict  # noqa: E402
+
+# ============ 0a. DAFTAR MODEL (dipakai dropdown "Pilih model" di halaman prediksi) ============
+# Menambah model baru cukup dengan menambah satu entri di sini; layout halaman tidak perlu diubah.
+MODEL_REGISTRY = {
+    "gb_v1": {"label": "Gradient Boosting v1.0.0",
+              "model": ROOT / "models" / "churn_model.joblib",
+              "meta": ROOT / "models" / "model_metadata.json"},
+    # "lr_v1": {"label": "Logistic Regression v1.0.0", "model": ROOT / "models" / "...joblib",
+    #           "meta": ROOT / "models" / "...json"},
+}
+_MODEL_CACHE = {}
+
+
+def model_available(key):
+    cfg = MODEL_REGISTRY[key]
+    return cfg["model"].exists() and cfg["meta"].exists()
+
+
+def model_options():
+    """Opsi dropdown model; model yang file-nya belum ada tetap tampil tapi tidak bisa dipilih."""
+    return [{"label": cfg["label"] + ("" if model_available(k) else "  (file model belum tersedia)"),
+             "value": k, "disabled": not model_available(k)} for k, cfg in MODEL_REGISTRY.items()]
+
+
+def default_model():
+    return next((k for k in MODEL_REGISTRY if model_available(k)), next(iter(MODEL_REGISTRY)))
+
+
+def get_model(key):
+    """Memuat model + metadata sekali, lalu disimpan di cache untuk prediksi berikutnya."""
+    if key not in _MODEL_CACHE:
+        cfg = MODEL_REGISTRY[key]
+        _MODEL_CACHE[key] = (load_model(cfg["model"]), load_metadata(cfg["meta"]))
+    return _MODEL_CACHE[key]
 
 # ============ 0. DATA HISTORIS (dimuat sekali saat aplikasi start) ============
 RAW = pd.read_csv(ROOT / "data" / "customer_churn.csv", parse_dates=["signup_date"])  # apa adanya
@@ -48,6 +85,7 @@ BTN = {"background": C["accent"], "color": "white", "border": 0, "padding": "6px
 GRID2 = {"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(420px, 1fr))", "gap": "12px"}
 ROW = {"display": "flex", "gap": "12px", "marginBottom": "12px", "flexWrap": "wrap"}
 STATUS_COLOR = {"Bertahan": "#4C72B0", "Churn": "#C44E52"}
+RISK_COLOR = {"Rendah": "#55A868", "Sedang": "#DD8452", "Tinggi": "#C44E52"}
 TABLE_STYLE = dict(style_cell={"padding": "6px", "fontSize": "13px", "textAlign": "left",
                                "fontFamily": "inherit"},
                    style_header={"fontWeight": "bold", "background": "#E9EDF5"},
@@ -172,14 +210,116 @@ def page_eda():
     return placeholder("eda", "Eksplorasi pola churn pada data historis, lengkap dengan filter.")
 
 
+# --- Prediksi Single Observasi ---
+# Nilai awal form = profil contoh pelanggan baru berkontrak bulanan (agar demo langsung bisa dijalankan).
+SINGLE_DEFAULT = {"region": "Sulawesi", "segment": "UMKM", "contract_type": "Bulanan",
+                  "payment_method": "Transfer Bank", "internet_service": "Fiber",
+                  "tenure_months": 6, "monthly_charges": 450000, "total_charges": None,
+                  "num_complaints": 3, "support_calls": 5}
+SINGLE_STEP = {"tenure_months": 1, "monthly_charges": 1000, "total_charges": 1000,
+               "num_complaints": 1, "support_calls": 1}
+SINGLE_FIELDS = CAT_COLS + NUM_COLS
+AKSI_RISIKO = {
+    "Tinggi": ("Prioritas retensi segera",
+               "Hubungi pelanggan dalam 48 jam melalui tim retensi dan tawarkan insentif personal "
+               "(diskon, upgrade layanan, atau bonus kuota)."),
+    "Sedang": ("Pantau dan lakukan engagement",
+               "Masukkan ke kampanye engagement bulan ini (survei kepuasan, promo upgrade) dan pantau "
+               "keluhan serta panggilan CS-nya."),
+    "Rendah": ("Pertahankan kualitas layanan",
+               "Tidak perlu intervensi khusus. Pertahankan kualitas layanan dan tawarkan program "
+               "loyalitas atau upsell."),
+}
+LABEL_STYLE = {"fontSize": "13px", "color": C["muted"], "marginBottom": "4px", "display": "block"}
+
+
+def rupiah(x):
+    return f"Rp{x:,.0f}".replace(",", ".")
+
+
+def single_field(col):
+    """Satu baris form: label + dropdown (kategorikal) atau input angka (numerik)."""
+    if col in CAT_COLS:
+        ctrl = dcc.Dropdown(id=f"single-{col}", options=sorted(RAW[col].dropna().unique()),
+                            value=SINGLE_DEFAULT[col], clearable=False)
+    else:
+        ctrl = dcc.Input(id=f"single-{col}", type="number", min=0, step=SINGLE_STEP[col],
+                         value=SINGLE_DEFAULT[col],
+                         placeholder="otomatis" if col == "total_charges" else "",
+                         style={"width": "100%", "padding": "7px 8px", "boxSizing": "border-box",
+                                "border": "1px solid #ccc", "borderRadius": "4px"})
+    label = LABELS[col] + (" (opsional)" if col == "total_charges" else "")
+    return html.Div([html.Label(label, htmlFor=f"single-{col}", style=LABEL_STYLE), ctrl],
+                    style={"marginBottom": "10px"})
+
+
+def gauge_fig(p, meta):
+    """Gauge probabilitas churn, berwarna sesuai rentang kategori risiko + garis threshold."""
+    steps = [{"range": [lo * 100, hi * 100], "color": RISK_COLOR.get(lbl, "#DDD") + "40"}
+             for lbl, (lo, hi) in meta["risk_bins"].items()]
+    f = go.Figure(go.Indicator(
+        mode="gauge+number", value=p * 100, number={"suffix": "%", "valueformat": ".1f"},
+        gauge={"axis": {"range": [0, 100], "ticksuffix": "%"}, "bar": {"color": C["ink"], "thickness": .3},
+               "steps": steps,
+               "threshold": {"line": {"color": C["accent"], "width": 3}, "thickness": .9,
+                             "value": meta["decision_threshold"] * 100}}))
+    f.update_layout(height=260, margin={"t": 30, "b": 10, "l": 30, "r": 30}, template="plotly_white",
+                    title={"text": f"Probabilitas churn (garis biru = threshold "
+                                   f"{meta['decision_threshold']:.0%})", "font": {"size": 14}})
+    return f
+
+
+def faktor_risiko(row):
+    """Saran spesifik berdasarkan karakteristik pelanggan (temuan insight bisnis sesi 8)."""
+    saran = []
+    if row["contract_type"] == "Bulanan":
+        saran.append("Kontrak Bulanan: tawarkan migrasi ke kontrak Tahunan dengan insentif diskon.")
+    if row["tenure_months"] < 12:
+        saran.append(f"Pelanggan baru ({row['tenure_months']:.0f} bulan): lakukan kontak onboarding proaktif "
+                     "selama 12 bulan pertama.")
+    if row["num_complaints"] >= 2:
+        saran.append(f"{row['num_complaints']:.0f} keluhan tercatat: pastikan diselesaikan maksimal 48 jam (SLA).")
+    if row["support_calls"] >= 5:
+        saran.append(f"{row['support_calls']:.0f} kali menghubungi CS: periksa kemungkinan masalah teknis berulang.")
+    if row["payment_method"] == "Transfer Bank":
+        saran.append("Pembayaran via Transfer Bank: dorong autodebit atau e-wallet untuk mengurangi friksi.")
+    return saran
+
+
+def single_placeholder(msg, icon="🧮", color=None):
+    return html.Div(style={**CARD, "border": "2px dashed #CBD5E1", "boxShadow": "none",
+                           "textAlign": "center", "padding": "56px 16px", "color": color or C["muted"]},
+                    children=[html.Div(icon, style={"fontSize": "36px"}), html.Div(msg)])
+
+
 def page_single():
-    # TODO: form input 1 pelanggan → probabilitas churn + kategori risiko — lihat README.
-    # CATATAN MODEL: halaman ini harus punya dropdown "Pilih model". Saat ini baru ada SATU model
-    # (Gradient Boosting v1.0.0 → models/churn_model.joblib + models/model_metadata.json), tapi
-    # dropdown tetap dibuat agar model lain (mis. Logistic Regression / Random Forest) bisa
-    # ditambahkan nanti tanpa mengubah layout.
-    return placeholder("single", "Prediksi churn untuk satu pelanggan dari form input. "
-                                 "Bisa memilih model (saat ini baru 1 model tersedia).")
+    """Form input satu pelanggan → probabilitas churn, kelas, kategori risiko, dan rekomendasi."""
+    tersedia = [k for k in MODEL_REGISTRY if model_available(k)]
+    model_card = card(
+        html.Label("Pilih model", htmlFor="single-model", style={**LABEL_STYLE, "fontWeight": 600}),
+        dcc.Dropdown(id="single-model", options=model_options(), value=default_model(), clearable=False),
+        html.Div(f"{len(tersedia)} dari {len(MODEL_REGISTRY)} model tersedia",
+                 style={"fontSize": "12px", "color": C["muted"], "marginTop": "6px"}),
+        marginBottom="12px")
+    form_card = card(
+        html.H4("Data pelanggan", style={"marginTop": 0}),
+        html.Div(style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "columnGap": "12px"},
+                 children=[single_field(c) for c in SINGLE_FIELDS]),
+        html.Button("Prediksi churn", id="single-btn", n_clicks=0,
+                    style={**BTN, "fontSize": "15px", "width": "100%", "padding": "10px"}))
+    return html.Div([
+        html.H3(PAGE_TITLE["single"], style={"margin": "4px 0 0"}),
+        html.Div("Isi data satu pelanggan, pilih model, lalu klik Prediksi churn untuk melihat "
+                 "probabilitas, kategori risiko, dan tindakan yang disarankan.",
+                 style={"color": C["muted"], "marginBottom": "12px"}),
+        html.Div(style={"display": "flex", "gap": "12px", "flexWrap": "wrap", "alignItems": "flex-start"},
+                 children=[
+            html.Div([model_card, form_card], style={"flex": "1 1 340px", "maxWidth": "460px"}),
+            dcc.Loading(html.Div(id="single-result", children=single_placeholder(
+                "Hasil prediksi akan muncul di sini setelah tombol Prediksi churn diklik.")),
+                parent_style={"flex": "2 1 480px", "minWidth": 0}),
+        ]),
+    ])
 
 
 def page_multi():
@@ -257,6 +397,69 @@ def show_page(page):
 
 # ============ 6. CALLBACKS: ISI HALAMAN ============
 # TODO: callback tiap halaman ditambahkan di sini oleh anggota tim yang mengerjakannya.
+
+# --- Prediksi Single Observasi ---
+@callback(Output("single-result", "children"), Input("single-btn", "n_clicks"),
+          State("single-model", "value"), *[State(f"single-{c}", "value") for c in SINGLE_FIELDS],
+          prevent_initial_call=True)
+def run_single_prediction(_, model_key, *values):
+    """Validasi input form → inference model terpilih → kartu hasil + gauge + rekomendasi."""
+    row = dict(zip(SINGLE_FIELDS, values))
+    kosong = [LABELS[c] for c, v in row.items() if v is None and c != "total_charges"]
+    if kosong:
+        return single_placeholder("Lengkapi isian berikut: " + ", ".join(kosong), "⚠️", RISK_COLOR["Tinggi"])
+    if any(row[c] is not None and row[c] < 0 for c in NUM_COLS):
+        return single_placeholder("Nilai numerik tidak boleh negatif.", "⚠️", RISK_COLOR["Tinggi"])
+    if row["total_charges"] is None:                       # sama seperti imputasi di insight_bisnis.py
+        row["total_charges"] = row["monthly_charges"] * row["tenure_months"]
+
+    if not model_key or not model_available(model_key):
+        return single_placeholder("File model belum tersedia di folder models/. Prediksi belum bisa "
+                                  "dijalankan.", "📦", RISK_COLOR["Tinggi"])
+    try:
+        model, meta = get_model(model_key)
+        df = pd.DataFrame([row])
+        errors = validate_input(df, meta)
+        if errors:
+            return single_placeholder(" · ".join(errors), "⚠️", RISK_COLOR["Tinggi"])
+        hasil = predict(model, df, meta).iloc[0]
+    except Exception as e:                                  # mis. file model rusak / versi tidak cocok
+        return single_placeholder(f"Gagal menjalankan model: {e}", "❌", RISK_COLOR["Tinggi"])
+
+    p, risiko = float(hasil["churn_probability"]), hasil["risk_category"]
+    kelas = "Churn" if hasil["predicted_churn"] == 1 else "Bertahan"
+    judul_aksi, aksi = AKSI_RISIKO.get(risiko, ("-", "-"))
+    warna = RISK_COLOR.get(risiko, C["ink"])
+    rentang = " · ".join(f"{k} {lo:.0%}–{hi:.0%}" for k, (lo, hi) in meta["risk_bins"].items())
+
+    def tile(judul, nilai, sub, color):
+        return html.Div(style={**CARD, "flex": "1 1 160px", "borderTop": f"4px solid {color}"}, children=[
+            html.Div(judul, style={"color": C["muted"], "fontSize": "13px"}),
+            html.Div(nilai, style={"fontSize": "26px", "fontWeight": 700, "color": color}),
+            html.Div(sub, style={"color": C["muted"], "fontSize": "12px"})])
+
+    info_model = [MODEL_REGISTRY[model_key]["label"]]
+    if "holdout_metrics" in meta and "roc_auc" in meta["holdout_metrics"]:
+        info_model.append(f"ROC-AUC holdout {meta['holdout_metrics']['roc_auc']:.3f}")
+    saran = faktor_risiko(row)
+    return html.Div([
+        html.Div(style=ROW, children=[
+            tile("Probabilitas churn", f"{p:.1%}", f"rata-rata churn historis {RAW.churn.mean():.1%}", warna),
+            tile("Prediksi kelas", kelas, f"threshold {meta['decision_threshold']:.0%}", STATUS_COLOR[kelas]),
+            tile("Kategori risiko", risiko, rentang, warna)]),
+        card(dcc.Graph(figure=gauge_fig(p, meta), config={"displayModeBar": False}), marginBottom="12px"),
+        card(html.H4("Rekomendasi tindakan", style={"marginTop": 0}),
+             html.Div(style={"borderLeft": f"4px solid {warna}", "background": warna + "14",
+                             "padding": "10px 14px", "borderRadius": "6px"}, children=[
+                 html.Div(judul_aksi, style={"fontWeight": 700, "color": warna}),
+                 html.Div(aksi, style={"marginTop": "4px"})]),
+             *([html.Div("Faktor yang perlu diperhatikan pada pelanggan ini:",
+                         style={"marginTop": "12px", "fontWeight": 600}),
+                html.Ul([html.Li(s) for s in saran], style={"margin": "6px 0 0", "paddingLeft": "20px"})]
+               if saran else []),
+             html.Div(f"Model: {' · '.join(info_model)} · Total tagihan dipakai: {rupiah(row['total_charges'])}",
+                      style={"color": C["muted"], "fontSize": "12px", "marginTop": "12px"})),
+    ])
 
 
 if __name__ == "__main__":

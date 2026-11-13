@@ -23,7 +23,8 @@ The prediction pages will also need `data/new_customers.csv`, `models/churn_mode
   four pages. Clicking a menu item, ✕, or anywhere outside the sidebar closes it.
 - [x] Data Overview page content
 - [ ] EDA page content
-- [ ] Single-observation prediction page content
+- [x] Single-observation prediction page content (needs the model files to run a prediction; without
+  them the page shows a "file model belum tersedia" message)
 - [ ] Multi-observation prediction page content
 
 Pages that aren't built yet show a "🚧 Halaman belum dibuat" placeholder.
@@ -56,7 +57,7 @@ Exploration of churn patterns in the historical data, for example:
 - Churn trend over time, correlation between features and churn
 - Short written insights based on the charts
 
-### 3. Prediksi Single Observasi
+### 3. Prediksi Single Observasi *(done)*
 
 - A form for entering one customer's details → churn probability, predicted class, risk category
   and a recommended action
@@ -76,6 +77,10 @@ Exploration of churn patterns in the historical data, for example:
 There is currently **only one model** (Gradient Boosting v1.0.0: `models/churn_model.joblib` +
 `models/model_metadata.json`). The model dropdown on both prediction pages must still be built so that
 more models (e.g. Logistic Regression, Random Forest) can be added later without changing the layout.
+
+Models are listed in `MODEL_REGISTRY` at the top of `sesi8/app_final_dashboard.py`. To add a model, add one
+entry (label + `.joblib` path + metadata `.json` path); the dropdown picks it up automatically. A model
+whose files are missing still appears in the dropdown, but greyed out and not selectable.
 
 ## Where to add page content
 
