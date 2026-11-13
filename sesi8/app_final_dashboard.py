@@ -3,11 +3,12 @@
 # STATUS: navigasi dan keempat halaman (Data Overview, EDA, Prediksi Single, Prediksi Multi)
 # sudah dibuat. Lihat README.md bagian "Requirements" untuk requirement tiap halaman.
 #
-# Navigasi: tombol ☰ di kiri atas membuka sidebar pop-up berisi 4 halaman:
+# Navigasi: tombol ☰ di kiri atas membuka sidebar pop-up berisi 5 halaman:
 #   1. Data Overview
 #   2. EDA
 #   3. Prediksi Single Observasi
 #   4. Prediksi Multi Observasi
+#   5. Team (kontributor repo)
 #
 # Cara menambah isi halaman: ganti fungsi page_*() di bagian 3 dengan layout halaman tersebut,
 # lalu tambahkan callback-nya di bagian 6. Jangan ubah id "page-<key>" karena dipakai navigasi.
@@ -28,6 +29,7 @@ sys.path.insert(0, str(ROOT))
 from utils.model_utils import validate_input, predict  # noqa: E402
 # MODEL_REGISTRY ada di utils/multi_predictions.py dan dipakai KEDUA halaman prediksi.
 from utils.multi_predictions import MODEL_REGISTRY, get_model_bundle, predict_upload  # noqa: E402
+from utils.contributors import load_contributors  # noqa: E402
 
 
 # ============ 0a. DAFTAR MODEL (dipakai dropdown "Pilih model" di halaman prediksi) ============
@@ -107,7 +109,8 @@ def empty_fig(msg="Tidak ada data"):
 PAGES = [("overview", "📊  Data Overview"),
          ("eda", "🔍  EDA"),
          ("single", "👤  Prediksi Single Observasi"),
-         ("multi", "📁  Prediksi Multi Observasi")]
+         ("multi", "📁  Prediksi Multi Observasi"),
+         ("team", "👥  Team")]
 PAGE_TITLE = {k: t.split("  ", 1)[1] for k, t in PAGES}
 
 
@@ -430,7 +433,52 @@ def page_multi():
     ])
 
 
-PAGE_BUILDERS = {"overview": page_overview, "eda": page_eda, "single": page_single, "multi": page_multi}
+REPO_URL = "https://github.com/christophianTechConnect/DADP_Churn_Project"
+
+
+def team_card(row):
+    """Kartu satu kontributor: inisial, nama, link GitHub, jumlah commit, dan commit terakhir."""
+    inisial = "".join(w[0] for w in row["name"].replace("-", " ").split()[:2]).upper()
+    nama = (html.A(row["name"], href=f"https://github.com/{row['github']}", target="_blank",
+                   style={"color": C["ink"], "textDecoration": "none"})
+            if row["github"] else row["name"])
+    return html.Div(style={**CARD, "display": "flex", "gap": "14px", "alignItems": "flex-start"}, children=[
+        html.Div(inisial, style={"flex": "0 0 48px", "height": "48px", "borderRadius": "50%",
+                                 "background": "#E8EEF9", "color": C["accent"], "fontWeight": 700,
+                                 "display": "flex", "alignItems": "center", "justifyContent": "center"}),
+        html.Div(style={"minWidth": 0}, children=[
+            html.Div(nama, style={"fontWeight": 700, "fontSize": "16px"}),
+            html.Div(f"@{row['github']}" if row["github"] else "", style={"color": C["muted"],
+                                                                         "fontSize": "12px"}),
+            html.Div(f"{row['commits']} commit · {row['first_commit']} – {row['last_commit']}",
+                     style={"color": C["muted"], "fontSize": "13px", "margin": "4px 0"}),
+            html.Ul([html.Li(s) for s in row["recent"]],
+                    style={"margin": 0, "paddingLeft": "18px", "fontSize": "13px"})])])
+
+
+def page_team():
+    """Kontributor repo GitHub, dihitung dari riwayat git saat aplikasi start."""
+    team = load_contributors(ROOT)
+    head = [html.H3(PAGE_TITLE["team"], style={"margin": "4px 0 0"}),
+            html.Div(["Kontributor ", html.A("repo GitHub", href=REPO_URL, target="_blank"),
+                      " dihitung dari riwayat commit (tanpa commit merge)."],
+                     style={"color": C["muted"], "marginBottom": "12px"})]
+    if team.empty:
+        return html.Div([*head, card("Riwayat git tidak tersedia, jadi daftar kontributor tidak bisa "
+                                     "ditampilkan. Jalankan aplikasi dari folder hasil git clone.",
+                                     color=C["muted"])])
+    return html.Div([
+        *head,
+        html.Div(style=ROW, children=[
+            kpi("Kontributor", f"{len(team)}"),
+            kpi("Total commit", f"{int(team.commits.sum())}", "tanpa commit merge"),
+            kpi("Periode", f"{team.first_commit.min()} – {team.last_commit.max()}")]),
+        html.Div(id="team-list", style=GRID2, children=[team_card(r) for _, r in team.iterrows()]),
+    ])
+
+
+PAGE_BUILDERS = {"overview": page_overview, "eda": page_eda, "single": page_single, "multi": page_multi,
+                 "team": page_team}
 
 # ============ 4. LAYOUT: HEADER + SIDEBAR POP-UP ============
 DRAWER = {"position": "fixed", "top": 0, "left": 0, "height": "100vh", "width": "280px",

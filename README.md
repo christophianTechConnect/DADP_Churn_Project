@@ -21,13 +21,23 @@ use the version pinned in `requirements.txt` when loading this model.
 ## Current status
 
 - [x] **Sidebar navigation**: the ☰ button (top left) opens a pop-up sidebar for switching between the
-  four pages. Clicking a menu item, ✕, or anywhere outside the sidebar closes it.
+  five pages (including Team). Clicking a menu item, ✕, or anywhere outside the sidebar closes it.
 - [x] Data Overview page content
 - [x] EDA page content
 - [x] Single-observation prediction page content (needs the model files to run a prediction; without
   them the page shows a "file model belum tersedia" message)
 - [x] Multi-observation prediction page content (CSV upload, validation, model selection, KPIs,
   charts, results table and CSV download)
+- [x] Team page: lists everyone who has committed to the repo
+
+### Team page
+
+The **Team** page lists the repo's contributors from the git history (`git log`, merge commits
+excluded), read once when the app starts. It uses git history rather than GitHub's contributors API
+because GitHub only counts commits whose email is linked to a GitHub account, so it misses some team
+members. If one person appears twice (different name or email on different machines), add a line to
+[`.mailmap`](.mailmap) to merge them. The page needs the `.git` folder; without it, it shows a
+"Riwayat git tidak tersedia" message instead.
 
 ### Using Prediksi Multi Observasi
 
@@ -132,6 +142,7 @@ Everything is in [`sesi8/app_final_dashboard.py`](sesi8/app_final_dashboard.py):
 | EDA | `page_eda()` | `page-eda` |
 | Prediksi Single Observasi | `page_single()` | `page-single` |
 | Prediksi Multi Observasi | `page_multi()` | `page-multi` |
+| Team | `page_team()` | `page-team` |
 
 1. Replace the `placeholder(...)` return value in your page's function with that page's layout.
 2. Add your page's callbacks in section 6 (`CALLBACKS: ISI HALAMAN`).
