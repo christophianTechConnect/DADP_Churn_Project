@@ -152,31 +152,40 @@ Each model's holdout ROC-AUC shown on the Single page comes from its own entry i
 `top_models_registry.json`, not from the shared `model_metadata.json` (which holds Gradient Boosting's
 numbers).
 
-**Default model changed.** The default is now #1 Logistic Regression. The figures in
-[`sesi8/LAPORAN_FINAL_PROJECT.md`](sesi8/LAPORAN_FINAL_PROJECT.md) (e.g. the 71.1% simulation result)
-were computed with Gradient Boosting, so pick **#3 Gradient Boosting** in the dropdown to reproduce
-them. For the same example customer the three models give different probabilities, e.g. 83.8%
-(#1), 90.5% (#2) and 70.0% (#3). The oversampling model tends to score customers higher.
+**Default model.** The default is #1 Logistic Regression. The business insights in
+[`sesi8/LAPORAN_FINAL_PROJECT.md`](sesi8/LAPORAN_FINAL_PROJECT.md) section 11 (and
+`sesi8/insight_bisnis.py`) are computed with **#3 Gradient Boosting**, the original final model. The
+three models give different probabilities for the same customer: with the Single page's default form
+values they give 89.3% (#1), 93.5% (#2) and 86.0% (#3), all "Tinggi". The oversampling model tends to
+score customers higher.
 
 `.joblib` files are pickles: loading one can run code, so only add model files from a trusted source.
 The two Logistic Regression files were checked before being added: they only reference scikit-learn,
 numpy, imbalanced-learn and joblib. The Gradient Boosting file from the same download produced
 identical predictions to the one already in the repo, so the repo's copy was kept.
 
-## Where to add page content
+## Code layout
 
-Everything is in [`sesi8/app_final_dashboard.py`](sesi8/app_final_dashboard.py):
+The app is in [`sesi8/app_final_dashboard.py`](sesi8/app_final_dashboard.py):
 
-| Page | Layout function | Container id |
-|---|---|---|
-| Data Overview | `page_overview()` | `page-overview` |
-| EDA | `page_eda()` | `page-eda` |
-| Prediksi Single Observasi | `page_single()` | `page-single` |
-| Prediksi Multi Observasi | `page_multi()` | `page-multi` |
-| Team | `page_team()` | `page-team` |
+| Page | Layout function | Container id | Callbacks (section 6) |
+|---|---|---|---|
+| Data Overview | `page_overview()` | `page-overview` | none (static) |
+| EDA | `page_eda()` | `page-eda` | `update_eda_overview`, `update_eda_categorical`, `update_eda_numeric`, `reset_eda_filters` |
+| Prediksi Single Observasi | `page_single()` | `page-single` | `run_single_prediction` |
+| Prediksi Multi Observasi | `page_multi()` | `page-multi` | `update_multi`, `download_multi` |
+| Team | `page_team()` | `page-team` | none (static) |
 
-1. Replace the `placeholder(...)` return value in your page's function with that page's layout.
-2. Add your page's callbacks in section 6 (`CALLBACKS: ISI HALAMAN`).
+Helpers: [`utils/model_utils.py`](utils/model_utils.py) (load model, validate, predict),
+[`utils/multi_predictions.py`](utils/multi_predictions.py) (model registry, CSV upload),
+[`utils/contributors.py`](utils/contributors.py) (Team page). The written project report is
+[`sesi8/LAPORAN_FINAL_PROJECT.md`](sesi8/LAPORAN_FINAL_PROJECT.md).
+
+To add a page:
+
+1. Add `(key, label)` to `PAGES` (section 2), write `page_<key>()` (section 3) and register it in
+   `PAGE_BUILDERS`.
+2. Add its callbacks in section 6 (`CALLBACKS: ISI HALAMAN`).
 3. Don't rename the `page-<key>` / `nav-<key>` ids; the sidebar navigation depends on them.
 4. All pages are rendered once and only hidden or shown, so component ids must be unique across
-   **all** pages (e.g. prefix them with your page key: `eda-...`, `single-...`, `multi-...`).
+   **all** pages (prefix them with the page key: `eda-...`, `single-...`, `multi-...`, `team-...`).

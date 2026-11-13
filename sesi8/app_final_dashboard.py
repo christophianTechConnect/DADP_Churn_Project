@@ -1,7 +1,7 @@
 # sesi8/app_final_dashboard.py — FINAL DASHBOARD PROJECT (Dash + Plotly + callback + ML inference)
 #
-# STATUS: navigasi dan keempat halaman (Data Overview, EDA, Prediksi Single, Prediksi Multi)
-# sudah dibuat. Lihat README.md bagian "Requirements" untuk requirement tiap halaman.
+# STATUS: navigasi dan kelima halaman sudah dibuat. Dokumentasi: README.md (teknis) dan
+# sesi8/LAPORAN_FINAL_PROJECT.md (laporan final project).
 #
 # Navigasi: tombol ☰ di kiri atas membuka sidebar pop-up berisi 5 halaman:
 #   1. Data Overview
@@ -10,8 +10,8 @@
 #   4. Prediksi Multi Observasi
 #   5. Team (kontributor repo)
 #
-# Cara menambah isi halaman: ganti fungsi page_*() di bagian 3 dengan layout halaman tersebut,
-# lalu tambahkan callback-nya di bagian 6. Jangan ubah id "page-<key>" karena dipakai navigasi.
+# Menambah halaman: tambahkan (key, label) di PAGES (bagian 2), fungsi page_<key>() di bagian 3 dan
+# di PAGE_BUILDERS, lalu callback-nya di bagian 6. Jangan ubah id "page-<key>" / "nav-<key>".
 #
 # Jalankan dari root project:  python sesi8/app_final_dashboard.py  →  http://127.0.0.1:8053
 import logging
@@ -115,15 +115,6 @@ PAGE_TITLE = {k: t.split("  ", 1)[1] for k, t in PAGES}
 
 
 # ============ 3. ISI HALAMAN ============
-def placeholder(key, deskripsi):
-    return html.Div([
-        html.H3(PAGE_TITLE[key], style={"margin": "4px 0 12px"}),
-        html.Div(style={**CARD, "border": "2px dashed #CBD5E1", "boxShadow": "none",
-                        "textAlign": "center", "padding": "48px 16px", "color": C["muted"]},
-                 children=[html.Div("🚧 Halaman belum dibuat", style={"fontSize": "18px",
-                                                                      "fontWeight": 600}),
-                           html.Div(deskripsi, style={"marginTop": "6px"})])])
-
 
 def page_overview():
     """Profil dataset historis data/customer_churn.csv (statis — tidak butuh callback)."""
@@ -544,7 +535,7 @@ def show_page(page):
 
 
 # ============ 6. CALLBACKS: ISI HALAMAN ============
-# TODO: callback halaman Prediksi ditambahkan di sini oleh anggota tim yang mengerjakannya.
+# 6b EDA · 6c Prediksi Single · 6d Prediksi Multi (Overview dan Team statis, tanpa callback).
 
 # ---------- 6b. EDA ----------
 EDA_FILTERS = [Input("eda-region", "value"), Input("eda-segment", "value"),
@@ -791,7 +782,7 @@ def update_eda_numeric(region, segment, contract, tenure, col):
 def reset_eda_filters(_):
     return None, None, None, [1, 72]
 
-# --- Prediksi Single Observasi ---
+# ---------- 6c. Prediksi Single Observasi ----------
 @callback(Output("single-result", "children"), Input("single-btn", "n_clicks"),
           State("single-model", "value"), *[State(f"single-{c}", "value") for c in SINGLE_FIELDS],
           prevent_initial_call=True)
@@ -855,6 +846,7 @@ def run_single_prediction(_, model_key, *values):
     ])
 
 
+# ---------- 6d. Prediksi Multi Observasi ----------
 @callback(Output("multi-message", "children"), Output("multi-output", "children"),
           Output("multi-results", "data"), Output("multi-download-button", "disabled"),
           Input("multi-upload", "contents"), Input("multi-model", "value"),
