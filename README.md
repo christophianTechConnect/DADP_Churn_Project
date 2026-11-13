@@ -22,6 +22,21 @@ use the versions pinned in `requirements.txt` when loading them.
 > It adds `imbalanced-learn`, which the *Logistic Regression + Oversampling* model needs; without
 > it, selecting that model shows an error.
 
+## Deploying to Vercel
+
+Vercel only looks for the app in the repo root, so [`index.py`](index.py) imports the dashboard
+from `sesi8/` and exposes its Flask server as `app`. `.python-version` pins Python 3.12, and
+`flask` is listed in `requirements.txt` so Vercel uses its Flask preset. Every push to `main`
+redeploys automatically.
+
+On Vercel:
+
+- The **Team** page shows "Riwayat git tidak tersedia" because deployments don't include `.git`.
+- Uploads on the Multi page are limited to about 3 MB (Vercel's 4.5 MB request limit, after
+  base64 encoding).
+- The function bundle is about 410 MB of Vercel's 500 MB limit. Don't add large packages
+  (e.g. `pyarrow`) to `requirements.txt`.
+
 ## Current status
 
 - [x] **Sidebar navigation**: the ☰ button (top left) opens a pop-up sidebar for switching between the
