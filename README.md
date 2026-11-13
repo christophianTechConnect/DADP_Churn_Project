@@ -14,9 +14,13 @@ python sesi8/app_final_dashboard.py
 Open http://127.0.0.1:8053.
 
 `data/customer_churn.csv` (historical dataset) is in the repo and is loaded when the app starts.
-`data/new_customers.csv`, `models/churn_model.joblib` and `models/model_metadata.json`
-are included for batch prediction. The model metadata records scikit-learn 1.9.1;
-use the version pinned in `requirements.txt` when loading this model.
+`data/new_customers.csv` (example upload for the Multi page), the three model files in `models/`
+and `models/model_metadata.json` are included. The models were saved with scikit-learn 1.9.1;
+use the versions pinned in `requirements.txt` when loading them.
+
+> **Pulled the top-3 models update?** Run `python -m pip install -r requirements.txt` again.
+> It adds `imbalanced-learn`, which the *Logistic Regression + Oversampling* model needs; without
+> it, selecting that model shows an error.
 
 ## Current status
 
@@ -144,22 +148,44 @@ To add a model: put its `.joblib` file in `models/` and add one entry to `top_mo
 (`MODEL_REGISTRY` in `utils/multi_predictions.py` is built from that file). A model whose file is
 missing still appears in the dropdown, but greyed out and not selectable.
 
+Each model's holdout ROC-AUC shown on the Single page comes from its own entry in
+`top_models_registry.json`, not from the shared `model_metadata.json` (which holds Gradient Boosting's
+numbers).
+
+**Default model.** The default is #1 Logistic Regression. The business insights in
+[`sesi8/LAPORAN_FINAL_PROJECT.md`](sesi8/LAPORAN_FINAL_PROJECT.md) section 11 (and
+`sesi8/insight_bisnis.py`) are computed with **#3 Gradient Boosting**, the original final model. The
+three models give different probabilities for the same customer: with the Single page's default form
+values they give 89.3% (#1), 93.5% (#2) and 86.0% (#3), all "Tinggi". The oversampling model tends to
+score customers higher.
+
 `.joblib` files are pickles: loading one can run code, so only add model files from a trusted source.
+The two Logistic Regression files were checked before being added: they only reference scikit-learn,
+numpy, imbalanced-learn and joblib. The Gradient Boosting file from the same download produced
+identical predictions to the one already in the repo, so the repo's copy was kept.
 
-## Where to add page content
+## Code layout
 
-Everything is in [`sesi8/app_final_dashboard.py`](sesi8/app_final_dashboard.py):
+The app is in [`sesi8/app_final_dashboard.py`](sesi8/app_final_dashboard.py):
 
-| Page | Layout function | Container id |
-|---|---|---|
-| Data Overview | `page_overview()` | `page-overview` |
-| EDA | `page_eda()` | `page-eda` |
-| Prediksi Single Observasi | `page_single()` | `page-single` |
-| Prediksi Multi Observasi | `page_multi()` | `page-multi` |
-| Team | `page_team()` | `page-team` |
+| Page | Layout function | Container id | Callbacks (section 6) |
+|---|---|---|---|
+| Data Overview | `page_overview()` | `page-overview` | none (static) |
+| EDA | `page_eda()` | `page-eda` | `update_eda_overview`, `update_eda_categorical`, `update_eda_numeric`, `reset_eda_filters` |
+| Prediksi Single Observasi | `page_single()` | `page-single` | `run_single_prediction` |
+| Prediksi Multi Observasi | `page_multi()` | `page-multi` | `update_multi`, `download_multi` |
+| Team | `page_team()` | `page-team` | none (static) |
 
-1. Replace the `placeholder(...)` return value in your page's function with that page's layout.
-2. Add your page's callbacks in section 6 (`CALLBACKS: ISI HALAMAN`).
+Helpers: [`utils/model_utils.py`](utils/model_utils.py) (load model, validate, predict),
+[`utils/multi_predictions.py`](utils/multi_predictions.py) (model registry, CSV upload),
+[`utils/contributors.py`](utils/contributors.py) (Team page). The written project report is
+[`sesi8/LAPORAN_FINAL_PROJECT.md`](sesi8/LAPORAN_FINAL_PROJECT.md).
+
+To add a page:
+
+1. Add `(key, label)` to `PAGES` (section 2), write `page_<key>()` (section 3) and register it in
+   `PAGE_BUILDERS`.
+2. Add its callbacks in section 6 (`CALLBACKS: ISI HALAMAN`).
 3. Don't rename the `page-<key>` / `nav-<key>` ids; the sidebar navigation depends on them.
 4. All pages are rendered once and only hidden or shown, so component ids must be unique across
-   **all** pages (e.g. prefix them with your page key: `eda-...`, `single-...`, `multi-...`).
+   **all** pages (prefix them with the page key: `eda-...`, `single-...`, `multi-...`, `team-...`).
