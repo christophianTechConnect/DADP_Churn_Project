@@ -14,9 +14,13 @@ python sesi8/app_final_dashboard.py
 Open http://127.0.0.1:8053.
 
 `data/customer_churn.csv` (historical dataset) is in the repo and is loaded when the app starts.
-`data/new_customers.csv`, `models/churn_model.joblib` and `models/model_metadata.json`
-are included for batch prediction. The model metadata records scikit-learn 1.9.1;
-use the version pinned in `requirements.txt` when loading this model.
+`data/new_customers.csv` (example upload for the Multi page), the three model files in `models/`
+and `models/model_metadata.json` are included. The models were saved with scikit-learn 1.9.1;
+use the versions pinned in `requirements.txt` when loading them.
+
+> **Pulled the top-3 models update?** Run `python -m pip install -r requirements.txt` again.
+> It adds `imbalanced-learn`, which the *Logistic Regression + Oversampling* model needs; without
+> it, selecting that model shows an error.
 
 ## Current status
 
@@ -144,7 +148,20 @@ To add a model: put its `.joblib` file in `models/` and add one entry to `top_mo
 (`MODEL_REGISTRY` in `utils/multi_predictions.py` is built from that file). A model whose file is
 missing still appears in the dropdown, but greyed out and not selectable.
 
+Each model's holdout ROC-AUC shown on the Single page comes from its own entry in
+`top_models_registry.json`, not from the shared `model_metadata.json` (which holds Gradient Boosting's
+numbers).
+
+**Default model changed.** The default is now #1 Logistic Regression. The figures in
+[`sesi8/LAPORAN_FINAL_PROJECT.md`](sesi8/LAPORAN_FINAL_PROJECT.md) (e.g. the 71.1% simulation result)
+were computed with Gradient Boosting, so pick **#3 Gradient Boosting** in the dropdown to reproduce
+them. For the same example customer the three models give different probabilities, e.g. 83.8%
+(#1), 90.5% (#2) and 70.0% (#3). The oversampling model tends to score customers higher.
+
 `.joblib` files are pickles: loading one can run code, so only add model files from a trusted source.
+The two Logistic Regression files were checked before being added: they only reference scikit-learn,
+numpy, imbalanced-learn and joblib. The Gradient Boosting file from the same download produced
+identical predictions to the one already in the repo, so the repo's copy was kept.
 
 ## Where to add page content
 
