@@ -1,0 +1,6 @@
+dash
+pandas
+plotly
+numpy
+joblib
+scikit-learn==1.9.1
