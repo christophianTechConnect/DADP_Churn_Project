@@ -1,7 +1,7 @@
 # sesi8/app_final_dashboard.py — FINAL DASHBOARD PROJECT (Dash + Plotly + callback + ML inference)
 #
-# STATUS: kerangka navigasi (sidebar pop-up) saja. Isi tiap halaman BELUM dibuat —
-# lihat README.md bagian "Pembagian tugas" untuk requirement tiap halaman.
+# STATUS: navigasi, Data Overview, dan EDA sudah dibuat. Halaman Prediksi BELUM dibuat —
+# lihat README.md bagian "Requirements" untuk requirement tiap halaman.
 #
 # Navigasi: tombol ☰ di kiri atas membuka sidebar pop-up berisi 4 halaman:
 #   1. Data Overview
@@ -205,9 +205,99 @@ def page_overview():
     ])
 
 
+# ---------- 3b. EDA ----------
+MIN_N = 30                                             # kelompok < 30 pelanggan terlalu kecil untuk insight
+CONTRACT_ORDER = ["Bulanan", "Tahunan", "Dua Tahun"]
+STATUS_ORDER = ["Bertahan", "Churn"]
+CAPTION = {"color": C["muted"], "fontSize": "13px", "fontWeight": 600, "marginTop": "8px"}
+
+
+def _short_rp(x):
+    return f"{x / 1e6:.1f}jt".replace(".", ",") if x >= 1e6 else f"{x / 1e3:.0f}rb"
+
+
+def _quintile_bins(col):
+    q = RAW[col].quantile([0, .2, .4, .6, .8, 1]).round(-3).tolist()
+    return ([-float("inf"), *q[1:-1], float("inf")],
+            [f"{_short_rp(a)}–{_short_rp(b)}" for a, b in zip(q[:-1], q[1:])])
+
+
+# Kelompok fitur numerik untuk grafik "churn rate per kelompok". Batasnya dihitung sekali dari data
+# penuh, sehingga kelompoknya tetap sama walaupun filter berubah.
+NUM_BANDS = {
+    "tenure_months": ([0, 6, 12, 24, 48, 72], ["1–6", "7–12", "13–24", "25–48", "49–72"]),
+    "monthly_charges": _quintile_bins("monthly_charges"),
+    "total_charges": _quintile_bins("total_charges"),
+    "num_complaints": ([-1, 0, 1, 2, 3, float("inf")], ["0", "1", "2", "3", "4+"]),
+    "support_calls": ([-1, 0, 1, 2, 3, 4, 5, float("inf")], ["0", "1", "2", "3", "4", "5", "6+"]),
+}
+
+
+def _filter_dd(id_, judul, options):
+    return html.Div(style={"flex": "1 1 180px"}, children=[
+        html.Label(judul, style={"fontWeight": 600, "fontSize": "13px"}),
+        dcc.Dropdown(id=id_, options=options, multi=True, placeholder="Semua")])
+
+
+def _card_head(judul, control):
+    return html.Div(style={"display": "flex", "justifyContent": "space-between", "alignItems": "center",
+                           "gap": "12px", "flexWrap": "wrap"},
+                    children=[html.H4(judul, style={"margin": 0}), control])
+
+
+def _feature_dd(id_, cols, value):
+    return dcc.Dropdown(id=id_, options=[{"label": LABELS[c], "value": c} for c in cols], value=value,
+                        clearable=False, style={"width": "210px"})
+
+
 def page_eda():
-    # TODO: eksplorasi pola churn dengan filter — lihat README.
-    return placeholder("eda", "Eksplorasi pola churn pada data historis, lengkap dengan filter.")
+    """Eksplorasi pola churn pada data historis. Semua isi diperbarui oleh callback update_eda_*."""
+    filters = card(html.Div(
+        style={"display": "flex", "gap": "12px", "flexWrap": "wrap", "alignItems": "flex-end"}, children=[
+            _filter_dd("eda-region", "Region", sorted(RAW.region.unique())),
+            _filter_dd("eda-segment", "Segmen", sorted(RAW.segment.unique())),
+            _filter_dd("eda-contract", "Jenis kontrak", CONTRACT_ORDER),
+            html.Div(style={"flex": "2 1 280px"}, children=[
+                html.Label("Tenure (bulan)", style={"fontWeight": 600, "fontSize": "13px"}),
+                dcc.RangeSlider(id="eda-tenure", min=1, max=72, step=1, value=[1, 72],
+                                marks={m: str(m) for m in (1, 12, 24, 36, 48, 60, 72)},
+                                tooltip={"placement": "bottom"})]),
+            html.Button("Reset filter", id="eda-reset", n_clicks=0,
+                        style={**BTN, "fontSize": "13px", "padding": "9px 14px"})]),
+        marginBottom="12px")
+
+    return html.Div([
+        html.H3(PAGE_TITLE["eda"], style={"margin": "4px 0 0"}),
+        html.Div("Eksplorasi pola churn pada data historis — KPI, grafik, dan insight mengikuti filter",
+                 style={"color": C["muted"], "marginBottom": "12px"}),
+        filters,
+        html.Div(id="eda-kpis", style=ROW),
+        card(html.H4("Insight utama", style={"marginTop": 0}),
+             html.Div(id="eda-insights", style={"lineHeight": 1.6}),
+             html.Div(f"Dihitung ulang setiap filter berubah. Kelompok dengan kurang dari {MIN_N} pelanggan "
+                      "diabaikan. Korelasi menunjukkan keterkaitan, bukan sebab-akibat.",
+                      style={"color": C["muted"], "fontSize": "12px"}),
+             marginBottom="12px"),
+        html.Div(style=GRID2, children=[
+            card(_card_head("Churn rate per fitur kategorikal",
+                            _feature_dd("eda-cat", CAT_COLS, "contract_type")),
+                 dcc.Graph(id="eda-cat-rate")),
+            card(html.H4("Churn rate: segmen × jenis kontrak", style={"margin": 0}),
+                 dcc.Graph(id="eda-heatmap"))]),
+        card(_card_head("Fitur numerik vs churn", _feature_dd("eda-num", NUM_COLS, "tenure_months")),
+             html.Div(style=GRID2, children=[
+                 html.Div([html.Div("Distribusi per status (% dari tiap status)", style=CAPTION),
+                           dcc.Graph(id="eda-num-dist")]),
+                 html.Div([html.Div("Churn rate per kelompok nilai", style=CAPTION),
+                           dcc.Graph(id="eda-num-rate")])]),
+             marginTop="12px"),
+        card(html.H4("Tren churn rate per kuartal pendaftaran", style={"margin": 0}),
+             dcc.Graph(id="eda-trend"), marginTop="12px"),
+        html.Div(style={**GRID2, "marginTop": "12px"}, children=[
+            card(html.H4("Korelasi fitur numerik dengan churn", style={"margin": 0}),
+                 dcc.Graph(id="eda-corr")),
+            card(html.H4("Matriks korelasi", style={"margin": 0}), dcc.Graph(id="eda-corr-matrix"))]),
+    ])
 
 
 # --- Prediksi Single Observasi ---
@@ -396,7 +486,252 @@ def show_page(page):
 
 
 # ============ 6. CALLBACKS: ISI HALAMAN ============
-# TODO: callback tiap halaman ditambahkan di sini oleh anggota tim yang mengerjakannya.
+# TODO: callback halaman Prediksi ditambahkan di sini oleh anggota tim yang mengerjakannya.
+
+# ---------- 6b. EDA ----------
+EDA_FILTERS = [Input("eda-region", "value"), Input("eda-segment", "value"),
+               Input("eda-contract", "value"), Input("eda-tenure", "value")]
+NO_DATA = "Tidak ada pelanggan yang cocok — longgarkan filter"
+RATE_HOVER = "Churn rate: %{customdata[2]:.1%}<br>%{customdata[1]:,} dari %{customdata[0]:,} pelanggan"
+
+
+def eda_filter(region, segment, contract, tenure):
+    """Filter kosong berarti 'semua'."""
+    d = RAW
+    if region: d = d[d.region.isin(region)]
+    if segment: d = d[d.segment.isin(segment)]
+    if contract: d = d[d.contract_type.isin(contract)]
+    if tenure: d = d[d.tenure_months.between(*tenure)]
+    return d
+
+
+def churn_rates(d, col, min_n=1):
+    g = (d.groupby(col, observed=False).churn.agg(rate="mean", n="size", churned="sum").reset_index())
+    return g[g.n >= min_n]
+
+
+def corr_with_churn(d):
+    """Korelasi (Pearson / point-biserial) tiap fitur numerik dengan churn; kosong jika tak terhitung."""
+    cols = [c for c in NUM_COLS if d[c].nunique() > 1]
+    if d.churn.nunique() < 2 or not cols:
+        return pd.Series(dtype=float)
+    return d[cols].corrwith(d.churn).dropna()
+
+
+def fig_style(fig, height=340, **kw):
+    fig.update_layout(template="plotly_white", height=height, margin=dict(t=30, b=10, l=10, r=10),
+                      font_family="Inter, Arial, sans-serif", **kw)
+    return fig
+
+
+def add_avg_line(fig, rate, horizontal):
+    line = dict(line_dash="dash", line_color=C["muted"], line_width=1,
+                annotation_text=f"rata-rata {rate:.1%}", annotation_font_color=C["muted"])
+    (fig.add_hline(y=rate, annotation_position="top right", **line) if horizontal
+     else fig.add_vline(x=rate, annotation_position="top", **line))
+
+
+def _fmt(x, spec):
+    return "–" if pd.isna(x) else format(x, spec)
+
+
+def eda_kpis(d):
+    n, churned = len(d), int(d.churn.sum())
+    by = d.groupby("churn")
+    ten, comp = by.tenure_months.median(), by.num_complaints.mean()
+    return [kpi("Pelanggan", f"{n:,}", f"{n / len(RAW):.0%} dari seluruh data"),
+            kpi("Churn rate", f"{d.churn.mean():.1%}", f"keseluruhan data: {RAW.churn.mean():.1%}"),
+            kpi("Pelanggan churn", f"{churned:,}", f"{n - churned:,} bertahan"),
+            kpi("Median tenure", f"{_fmt(ten.get(1), '.0f')} vs {_fmt(ten.get(0), '.0f')} bln",
+                "churn vs bertahan"),
+            kpi("Rata-rata keluhan", f"{_fmt(comp.get(1), '.1f')} vs {_fmt(comp.get(0), '.1f')}",
+                "churn vs bertahan")]
+
+
+def eda_insights(d):
+    """Insight tertulis yang dihitung dari data terfilter (kelompok < MIN_N dilewati)."""
+    out, n, rate, overall = [], len(d), d.churn.mean(), RAW.churn.mean()
+    diff = rate - overall
+    if n == len(RAW):
+        banding = "ini adalah seluruh data historis"
+    elif abs(diff) < 0.005:
+        banding = f"setara dengan keseluruhan data ({overall:.1%})"
+    else:
+        banding = f"{abs(diff) * 100:.1f} poin {'di atas' if diff > 0 else 'di bawah'} keseluruhan data ({overall:.1%})"
+    out.append(f"Churn rate **{rate:.1%}** ({int(d.churn.sum()):,} dari {n:,} pelanggan) — {banding}.")
+
+    g = churn_rates(d, "contract_type", MIN_N)
+    if len(g) >= 2:
+        hi, lo = g.loc[g.rate.idxmax()], g.loc[g.rate.idxmin()]
+        kali = f", {hi.rate / lo.rate:.1f}× lipat" if lo.rate > 0 else ""
+        teks = (f"Kontrak **{hi.contract_type}** paling rentan: churn {hi.rate:.1%} vs {lo.rate:.1%} "
+                f"pada kontrak {lo.contract_type}{kali}.")
+        if CONTRACT_ORDER.index(lo.contract_type) > CONTRACT_ORDER.index(hi.contract_type):
+            teks += " Kontrak yang lebih panjang berkaitan dengan churn yang jauh lebih rendah."
+        out.append(teks)
+
+    baru, lama = d[d.tenure_months <= 12], d[d.tenure_months > 24]
+    if len(baru) >= MIN_N and len(lama) >= MIN_N:
+        rb, rl = baru.churn.mean(), lama.churn.mean()
+        out.append(f"Pelanggan baru (tenure ≤ 12 bln) churn **{rb:.1%}**, dibanding {rl:.1%} untuk tenure "
+                   f"> 24 bln — " + ("risiko terbesar ada di tahun pertama berlangganan."
+                                     if rb > rl + 0.05 else "perbedaannya kecil pada filter ini."))
+
+    nol, banyak = d[d.num_complaints == 0], d[d.num_complaints >= 3]
+    if len(nol) >= MIN_N and len(banyak) >= MIN_N:
+        r0, r3 = nol.churn.mean(), banyak.churn.mean()
+        out.append(f"Pelanggan dengan ≥ 3 keluhan churn **{r3:.1%}**, dibanding {r0:.1%} tanpa keluhan — "
+                   + ("keluhan adalah sinyal peringatan dini churn." if r3 > r0 + 0.05
+                      else "keluhan tidak banyak membedakan churn pada filter ini."))
+
+    best = None
+    for col in ["segment", "region", "payment_method", "internet_service"]:
+        g = churn_rates(d, col, MIN_N)
+        if len(g) >= 2:
+            top = g.loc[g.rate.idxmax()]
+            if best is None or top.rate > best[2]:
+                best = (col, top[col], top.rate, int(top.n))
+    if best:
+        out.append(f"Di luar jenis kontrak, churn tertinggi ada pada **{LABELS[best[0]]} {best[1]}** "
+                   f"({best[2]:.1%}, n = {best[3]:,}).")
+
+    r = corr_with_churn(d) if n >= MIN_N else pd.Series(dtype=float)
+    if len(r):
+        top = r.abs().idxmax()
+        v = r[top]
+        kuat = "kuat" if abs(v) >= 0.5 else "sedang" if abs(v) >= 0.3 else "lemah"
+        arah = "makin besar" if v > 0 else "makin kecil"
+        out.append(f"Fitur numerik paling terkait dengan churn: **{LABELS[top]}** (r = {v:+.2f}, korelasi "
+                   f"{kuat}) — makin tinggi nilainya, {arah} kecenderungan churn.")
+        if {"tenure_months", "total_charges"} <= set(r.index):
+            rt = d.tenure_months.corr(d.total_charges)
+            if rt >= 0.7:
+                out.append(f"**Total tagihan** sangat berkorelasi dengan tenure (r = {rt:.2f}) karena merupakan "
+                           "akumulasi tagihan bulanan — informasinya banyak tumpang tindih.")
+    return dcc.Markdown("\n".join(f"- {s}" for s in out))
+
+
+def fig_heatmap(d):
+    segs = sorted(d.segment.unique())
+    cons = [c for c in CONTRACT_ORDER if c in set(d.contract_type)]
+    pv = d.groupby(["segment", "contract_type"]).churn.agg(["mean", "size"])
+    rate = pv["mean"].unstack().reindex(index=segs, columns=cons)
+    n = pv["size"].unstack().reindex(index=segs, columns=cons).fillna(0).astype(int)
+    text = [[f"{r:.0%}<br>n={k}" if k else "" for r, k in zip(rr, kk)]
+            for rr, kk in zip(rate.values, n.values)]
+    fig = go.Figure(go.Heatmap(
+        z=rate.values, x=cons, y=segs, text=text, texttemplate="%{text}", customdata=n.values,
+        colorscale="Reds", zmin=0, zmax=1, xgap=2, ygap=2,
+        colorbar=dict(title="Churn", tickformat=".0%", thickness=12),
+        hovertemplate="<b>%{y} · %{x}</b><br>Churn rate: %{z:.1%}<br>n = %{customdata:,}<extra></extra>"))
+    fig.update_yaxes(autorange="reversed")
+    return fig_style(fig)
+
+
+def fig_trend(d):
+    g = churn_rates(d.assign(kuartal=d.signup_date.dt.to_period("Q").astype(str)), "kuartal")
+    fig = px.line(g, x="kuartal", y="rate", markers=True, custom_data=["n", "churned", "rate"],
+                  color_discrete_sequence=[C["accent"]],
+                  labels={"kuartal": "Kuartal pendaftaran", "rate": "Churn rate"})
+    fig.update_traces(line_width=2, marker_size=8, hovertemplate=f"<b>%{{x}}</b><br>{RATE_HOVER}<extra></extra>")
+    add_avg_line(fig, d.churn.mean(), horizontal=True)
+    fig.update_yaxes(tickformat=".0%", rangemode="tozero")
+    return fig_style(fig, height=300)
+
+
+def fig_corr(d):
+    r = corr_with_churn(d).sort_values()
+    if r.empty:
+        return empty_fig("Korelasi tidak bisa dihitung untuk filter ini")
+    pos, neg = "Searah churn (+)", "Berlawanan churn (−)"
+    cr = pd.DataFrame({"fitur": r.index.map(LABELS), "r": r.values,
+                       "arah": [pos if v >= 0 else neg for v in r.values]})
+    fig = px.bar(cr, x="r", y="fitur", orientation="h", color="arah",
+                 color_discrete_map={pos: STATUS_COLOR["Churn"], neg: STATUS_COLOR["Bertahan"]},
+                 category_orders={"arah": [pos, neg]}, labels={"r": "Korelasi (r)", "fitur": "", "arah": ""})
+    fig.update_traces(texttemplate="%{x:+.2f}", textposition="outside", cliponaxis=False,
+                      hovertemplate="<b>%{y}</b><br>r = %{x:+.2f}<extra></extra>")
+    m = max(r.abs().max() * 1.35, 0.1)
+    fig.update_xaxes(range=[-m, m], zeroline=True, zerolinecolor=C["muted"])
+    return fig_style(fig, legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0))
+
+
+def fig_corr_matrix(d):
+    cols = [c for c in NUM_COLS if d[c].nunique() > 1] + (["churn"] if d.churn.nunique() > 1 else [])
+    if len(cols) < 2:
+        return empty_fig("Korelasi tidak bisa dihitung untuk filter ini")
+    m = d[cols].corr()
+    names = [LABELS[c] for c in cols]
+    fig = go.Figure(go.Heatmap(
+        z=m.values, x=names, y=names, text=m.values, texttemplate="%{text:.2f}", colorscale="RdBu",
+        reversescale=True, zmin=-1, zmax=1, xgap=2, ygap=2, colorbar=dict(title="r", thickness=12),
+        hovertemplate="%{y} × %{x}<br>r = %{z:.2f}<extra></extra>"))
+    fig.update_yaxes(autorange="reversed")
+    return fig_style(fig, height=380)
+
+
+@callback(Output("eda-kpis", "children"), Output("eda-insights", "children"),
+          Output("eda-heatmap", "figure"), Output("eda-trend", "figure"),
+          Output("eda-corr", "figure"), Output("eda-corr-matrix", "figure"), *EDA_FILTERS)
+def update_eda_overview(region, segment, contract, tenure):
+    d = eda_filter(region, segment, contract, tenure)
+    if d.empty:
+        e = empty_fig(NO_DATA)
+        return [kpi("Pelanggan", "0", "sesuai filter")], NO_DATA, e, e, e, e
+    return eda_kpis(d), eda_insights(d), fig_heatmap(d), fig_trend(d), fig_corr(d), fig_corr_matrix(d)
+
+
+@callback(Output("eda-cat-rate", "figure"), *EDA_FILTERS, Input("eda-cat", "value"))
+def update_eda_categorical(region, segment, contract, tenure, col):
+    d = eda_filter(region, segment, contract, tenure)
+    if d.empty:
+        return empty_fig(NO_DATA)
+    g = churn_rates(d, col).sort_values("rate")
+    fig = px.bar(g, x="rate", y=col, orientation="h", custom_data=["n", "churned", "rate"],
+                 color_discrete_sequence=[C["accent"]], labels={"rate": "Churn rate", col: ""})
+    fig.update_traces(texttemplate="%{x:.1%}", textposition="outside", cliponaxis=False,
+                      hovertemplate=f"<b>%{{y}}</b><br>{RATE_HOVER}<extra></extra>")
+    add_avg_line(fig, d.churn.mean(), horizontal=False)
+    fig.update_xaxes(tickformat=".0%", range=[0, max(g.rate.max() * 1.25, 0.05)])
+    return fig_style(fig)
+
+
+@callback(Output("eda-num-dist", "figure"), Output("eda-num-rate", "figure"),
+          *EDA_FILTERS, Input("eda-num", "value"))
+def update_eda_numeric(region, segment, contract, tenure, col):
+    d = eda_filter(region, segment, contract, tenure)
+    if d.empty:
+        return empty_fig(NO_DATA), empty_fig(NO_DATA)
+    s = d.assign(status=d.churn.map({0: "Bertahan", 1: "Churn"})).dropna(subset=[col])
+    discrete = col in ("num_complaints", "support_calls")
+    dist = px.histogram(s, x=col, color="status", barmode="group", histnorm="percent", marginal="box",
+                        nbins=None if discrete else 20, category_orders={"status": STATUS_ORDER},
+                        color_discrete_map=STATUS_COLOR, labels={col: LABELS[col], "status": ""})
+    if discrete:
+        dist.update_traces(xbins=dict(size=1), selector=dict(type="histogram"))
+    dist.update_traces(hovertemplate="%{x}<br>%{y:.1f}% pelanggan<extra>%{fullData.name}</extra>",
+                       selector=dict(type="histogram"))
+    dist.update_layout(yaxis_title="% pelanggan", bargap=0.1)
+    fig_style(dist, legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0))
+
+    bins, names = NUM_BANDS[col]
+    g = churn_rates(d.assign(band=pd.cut(d[col], bins=bins, labels=names)), "band")
+    g["band"] = g.band.astype(str)
+    rate = px.bar(g, x="band", y="rate", custom_data=["n", "churned", "rate"],
+                  color_discrete_sequence=[C["accent"]], category_orders={"band": names},
+                  labels={"band": LABELS[col], "rate": "Churn rate"})
+    rate.update_traces(texttemplate="%{y:.0%}", textposition="outside", cliponaxis=False,
+                       hovertemplate=f"<b>%{{x}}</b><br>{RATE_HOVER}<extra></extra>")
+    add_avg_line(rate, d.churn.mean(), horizontal=True)
+    rate.update_yaxes(tickformat=".0%", range=[0, max(g.rate.max() * 1.25, 0.05)])
+    return dist, fig_style(rate)
+
+
+@callback(Output("eda-region", "value"), Output("eda-segment", "value"),
+          Output("eda-contract", "value"), Output("eda-tenure", "value"),
+          Input("eda-reset", "n_clicks"), prevent_initial_call=True)
+def reset_eda_filters(_):
+    return None, None, None, [1, 72]
 
 # --- Prediksi Single Observasi ---
 @callback(Output("single-result", "children"), Input("single-btn", "n_clicks"),
