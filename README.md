@@ -13,20 +13,20 @@ python sesi8/app_final_dashboard.py
 
 Open http://127.0.0.1:8053.
 
-The prediction pages will need `data/customer_churn.csv`, `data/new_customers.csv`, `models/churn_model.joblib`
-and `models/model_metadata.json`. These are **not in the repo yet** and must be added before the page
-contents can be built.
+`data/customer_churn.csv` (historical dataset) is in the repo and is loaded when the app starts.
+The prediction pages will also need `data/new_customers.csv`, `models/churn_model.joblib` and
+`models/model_metadata.json`, which are **not in the repo yet**.
 
 ## Current status
 
 - [x] **Sidebar navigation**: the ☰ button (top left) opens a pop-up sidebar for switching between the
   four pages. Clicking a menu item, ✕, or anywhere outside the sidebar closes it.
-- [ ] Data Overview page content
+- [x] Data Overview page content
 - [ ] EDA page content
 - [ ] Single-observation prediction page content
 - [ ] Multi-observation prediction page content
 
-Each page currently shows a "🚧 Halaman belum dibuat" placeholder.
+Pages that aren't built yet show a "🚧 Halaman belum dibuat" placeholder.
 
 ## Requirements
 
@@ -36,9 +36,9 @@ Each page currently shows a "🚧 Halaman belum dibuat" placeholder.
   **Prediksi Single Observasi** and **Prediksi Multi Observasi**. *(done)*
 - Each page must have complete content. The items listed below are the minimum for each page.
 
-### 1. Data Overview
+### 1. Data Overview *(done)*
 
-Profile of the historical dataset (`data/customer_churn.csv`), for example:
+Profile of the historical dataset (`data/customer_churn.csv`):
 
 - Summary KPIs: number of rows and columns, signup period, missing values, churn rate
 - Data dictionary: column name, type, description, missing count, unique values

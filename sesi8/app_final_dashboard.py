@@ -13,7 +13,31 @@
 # lalu tambahkan callback-nya di bagian 6. Jangan ubah id "page-<key>" karena dipakai navigasi.
 #
 # Jalankan dari root project:  python sesi8/app_final_dashboard.py  →  http://127.0.0.1:8053
-from dash import Dash, html, dcc, Input, Output, callback, ctx, no_update
+from pathlib import Path
+
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from dash import Dash, html, dcc, dash_table, Input, Output, callback, ctx, no_update
+
+ROOT = Path(__file__).resolve().parents[1]
+
+# ============ 0. DATA HISTORIS (dimuat sekali saat aplikasi start) ============
+RAW = pd.read_csv(ROOT / "data" / "customer_churn.csv", parse_dates=["signup_date"])  # apa adanya
+NUM_COLS = ["tenure_months", "monthly_charges", "total_charges", "num_complaints", "support_calls"]
+CAT_COLS = ["region", "segment", "contract_type", "payment_method", "internet_service"]
+LABELS = {"customer_id": "ID pelanggan", "signup_date": "Tanggal daftar", "region": "Region",
+          "segment": "Segmen", "contract_type": "Jenis kontrak", "payment_method": "Metode pembayaran",
+          "internet_service": "Layanan internet", "tenure_months": "Tenure (bulan)",
+          "monthly_charges": "Tagihan bulanan", "total_charges": "Total tagihan",
+          "num_complaints": "Jumlah keluhan", "support_calls": "Panggilan CS", "churn": "Churn"}
+DESKRIPSI = {"customer_id": "ID unik pelanggan", "signup_date": "Tanggal pelanggan mendaftar",
+             "region": "Wilayah layanan", "segment": "Segmen bisnis pelanggan",
+             "contract_type": "Durasi kontrak", "payment_method": "Cara pembayaran tagihan",
+             "internet_service": "Jenis layanan internet", "tenure_months": "Lama berlangganan (bulan)",
+             "monthly_charges": "Tagihan per bulan (Rp)", "total_charges": "Akumulasi tagihan (Rp)",
+             "num_complaints": "Jumlah keluhan tercatat", "support_calls": "Jumlah panggilan ke CS",
+             "churn": "TARGET — 1 = berhenti berlangganan"}
 
 # ============ 1. STYLE ============
 C = {"bg": "#F5F7FB", "card": "white", "ink": "#1F2A44", "muted": "#6B7280", "accent": "#2F5DA8"}
@@ -21,6 +45,31 @@ CARD = {"background": C["card"], "borderRadius": "12px", "padding": "16px",
         "boxShadow": "0 1px 3px rgba(0,0,0,.08)"}
 BTN = {"background": C["accent"], "color": "white", "border": 0, "padding": "6px 14px",
        "borderRadius": "8px", "cursor": "pointer", "fontSize": "20px"}
+GRID2 = {"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(420px, 1fr))", "gap": "12px"}
+ROW = {"display": "flex", "gap": "12px", "marginBottom": "12px", "flexWrap": "wrap"}
+STATUS_COLOR = {"Bertahan": "#4C72B0", "Churn": "#C44E52"}
+TABLE_STYLE = dict(style_cell={"padding": "6px", "fontSize": "13px", "textAlign": "left",
+                               "fontFamily": "inherit"},
+                   style_header={"fontWeight": "bold", "background": "#E9EDF5"},
+                   style_table={"overflowX": "auto"})
+
+
+def kpi(judul, nilai, sub=""):
+    return html.Div(style={**CARD, "flex": "1 1 160px"}, children=[
+        html.Div(judul, style={"color": C["muted"], "fontSize": "13px"}),
+        html.Div(nilai, style={"fontSize": "26px", "fontWeight": 700, "color": C["ink"]}),
+        html.Div(sub, style={"color": C["muted"], "fontSize": "12px"})])
+
+
+def card(*children, **style):
+    return html.Div(style={**CARD, **style}, children=list(children))
+
+
+def empty_fig(msg="Tidak ada data"):
+    f = go.Figure()
+    f.add_annotation(text=msg, showarrow=False, font={"size": 14, "color": C["muted"]})
+    f.update_layout(template="plotly_white", xaxis_visible=False, yaxis_visible=False, height=320)
+    return f
 
 # ============ 2. DAFTAR HALAMAN ============
 # (key, label menu). key dipakai untuk id: "page-<key>" (kontainer) dan "nav-<key>" (tombol menu).
@@ -43,8 +92,79 @@ def placeholder(key, deskripsi):
 
 
 def page_overview():
-    # TODO: profil dataset historis (data/customer_churn.csv) — lihat README.
-    return placeholder("overview", "Profil dataset: ukuran data, kamus data, missing value, statistik.")
+    """Profil dataset historis data/customer_churn.csv (statis — tidak butuh callback)."""
+    n_rows, n_cols = RAW.shape
+    missing = RAW.isna().sum()
+    kpis = html.Div(style=ROW, children=[
+        kpi("Jumlah baris", f"{n_rows:,}", "pelanggan historis"),
+        kpi("Jumlah kolom", f"{n_cols}", f"{len(NUM_COLS)} numerik · {len(CAT_COLS)} kategorikal"),
+        kpi("Periode daftar", f"{RAW.signup_date.min():%b %Y} – {RAW.signup_date.max():%b %Y}"),
+        kpi("Missing value", f"{int(missing.sum()):,}", f"{missing.sum() / RAW.size:.2%} dari seluruh sel"),
+        kpi("Duplikat ID", f"{RAW.customer_id.duplicated().sum():,}"),
+        kpi("Churn rate", f"{RAW.churn.mean():.1%}", f"{int(RAW.churn.sum()):,} pelanggan churn")])
+
+    # kamus data: arti, tipe, kelengkapan, dan contoh nilai tiap kolom
+    kamus = pd.DataFrame({
+        "kolom": RAW.columns,
+        "tipe": [("kategorikal" if c in CAT_COLS else "numerik" if c in NUM_COLS
+                  else "target" if c == "churn" else "tanggal" if c == "signup_date" else "ID")
+                 for c in RAW.columns],
+        "deskripsi": [DESKRIPSI.get(c, "") for c in RAW.columns],
+        "missing": missing.values,
+        "unik": RAW.nunique().values,
+        "contoh": [str(RAW[c].dropna().iloc[0]) for c in RAW.columns]})
+
+    stats = RAW[NUM_COLS].describe().T.reset_index().rename(columns={"index": "fitur"})
+    stats["fitur"] = stats["fitur"].map(LABELS)
+    stats = stats.round(1)
+
+    miss = missing[missing > 0].sort_values()
+    if len(miss):
+        g_miss = px.bar(x=miss.values, y=miss.index, orientation="h", text_auto=True,
+                        template="plotly_white", title="Missing value per kolom",
+                        labels={"x": "Jumlah baris kosong", "y": ""},
+                        color_discrete_sequence=[C["accent"]])
+    else:
+        g_miss = empty_fig("Tidak ada missing value")
+
+    tgt = RAW.churn.map({0: "Bertahan", 1: "Churn"}).value_counts().reset_index()
+    g_tgt = px.bar(tgt, x="churn", y="count", color="churn", text_auto=True,
+                   color_discrete_map=STATUS_COLOR, template="plotly_white",
+                   title="Distribusi target (churn)", labels={"churn": "", "count": "Pelanggan"})
+    g_tgt.update_layout(showlegend=False)
+
+    per_cat = pd.concat([RAW[c].value_counts().rename_axis("nilai").reset_index().assign(fitur=LABELS[c])
+                         for c in CAT_COLS])
+    g_cat = px.bar(per_cat, x="count", y="nilai", facet_col="fitur", facet_col_wrap=5,
+                   orientation="h", template="plotly_white", height=360,
+                   title="Komposisi fitur kategorikal", color_discrete_sequence=[C["accent"]],
+                   labels={"count": "", "nilai": ""})
+    g_cat.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+    g_cat.update_yaxes(matches=None, showticklabels=True)
+
+    preview = RAW.assign(signup_date=RAW.signup_date.dt.strftime("%Y-%m-%d"))
+    return html.Div([
+        html.H3(PAGE_TITLE["overview"], style={"margin": "4px 0 0"}),
+        html.Div("Profil dataset historis data/customer_churn.csv yang dipakai untuk melatih model",
+                 style={"color": C["muted"], "marginBottom": "12px"}),
+        kpis,
+        card(html.H4("Kamus data", style={"marginTop": 0}),
+             dash_table.DataTable(data=kamus.to_dict("records"),
+                                  columns=[{"name": c.capitalize(), "id": c} for c in kamus.columns],
+                                  **TABLE_STYLE), marginBottom="12px"),
+        html.Div(style=GRID2, children=[card(dcc.Graph(figure=g_tgt)), card(dcc.Graph(figure=g_miss))]),
+        card(dcc.Graph(figure=g_cat), marginTop="12px"),
+        card(html.H4("Statistik deskriptif fitur numerik", style={"marginTop": 0}),
+             dash_table.DataTable(data=stats.to_dict("records"),
+                                  columns=[{"name": c, "id": c} for c in stats.columns], **TABLE_STYLE),
+             marginTop="12px"),
+        card(html.H4("Pratinjau data mentah", style={"marginTop": 0}),
+             dash_table.DataTable(id="overview-raw", data=preview.to_dict("records"),
+                                  columns=[{"name": LABELS.get(c, c), "id": c} for c in preview.columns],
+                                  page_size=10, sort_action="native", filter_action="native",
+                                  **TABLE_STYLE),
+             marginTop="12px"),
+    ])
 
 
 def page_eda():
